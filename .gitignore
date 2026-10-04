@@ -1,0 +1,17 @@
+# Bỏ qua các thư mục build của NetBeans (Ant/Maven)
+build/
+dist/
+target/
+
+# Bỏ qua file cấu hình cá nhân của NetBeans
+nbproject/private/
+nbproject/project.xml.template
+nbproject/project.properties.template
+
+# Bỏ qua các file cấu hình môi trường chứa mật khẩu/secret
+.env
+
+# Bỏ qua logs và file tạm hệ điều hành
+*.log
+.DS_Store
+Thumbs.db
