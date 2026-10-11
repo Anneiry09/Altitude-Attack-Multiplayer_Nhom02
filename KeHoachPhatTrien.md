@@ -61,19 +61,19 @@
 ## 📌 GIAI ĐOẠN 4: Hoàn thiện Logic Game & Đồ hoạ (Tuần 4)
 **Mục tiêu:** Áp dụng vật lý, bắn đạn, va chạm và hình ảnh thật.
 
-- [ ] **4.1. Áp dụng Vật lý và Bắn súng (Dev Server):**
+- [x] **4.1. Áp dụng Vật lý và Bắn súng (Dev Server):**
   - Thêm quán tính: Máy bay không dừng hẳn ngay mà giảm tốc từ từ khi thả phím.
   - Logic đạn: Khi nhận cờ `isShooting = true`, tạo Object `Bullet` có vận tốc V theo hướng `Angle` (`vX = V * cos(Angle), vY = V * sin(Angle)`).
   - Thêm biến `lastShotTime` để giới hạn tốc độ bắn (Cooldown súng 0.2s/viên).
-- [ ] **4.2. Xử lý Va chạm & Trạng thái (Dev Server):**
-  - Dùng `Rectangle.intersects()` hoặc công thức khoảng cách 2 điểm để xét va chạm giữa Đạn và Máy bay.
+- [x] **4.2. Xử lý Va chạm & Trạng thái (Dev Server):**
+  - Dùng khoảng cách 2 điểm để xét va chạm giữa Đạn và Máy bay.
   - Viết logic: Trừ HP -> Nếu HP = 0 -> Tăng Score cho người bắn -> Chuyển máy bay chết sang trạng thái Respawn (đếm ngược 3s).
-- [ ] **4.3. Đồ hoạ & Sprite (Dev Client):**
+- [x] **4.3. Đồ hoạ & Sprite (Dev Client):**
   - Load ảnh trực thăng, ảnh đạn, ảnh nền hang động bằng `ImageIO.read()`.
   - Sử dụng `Graphics2D.rotate(angle, centerX, centerY)` để vẽ máy bay xoay đúng hướng chuột.
-- [ ] **4.4. Kỹ thuật giảm giật/lag (Cả nhóm):**
-  - **Dev Client:** Viết thuật toán *Interpolation* (Nội suy). Lưu trạng thái State n-1 và State n, render vị trí ở giữa 2 state để mượt hóa chuyển động.
-  - **Dev Network:** Thêm cơ chế Heartbeat, Server đếm timer nếu 5 giây không nhận UDP của Client A -> Xoá Client A khỏi mảng.
+- [x] **4.4. Kỹ thuật giảm giật/lag & Âm thanh (Cả nhóm):**
+  - **Dev Client:** Nội suy LERP DeltaTime mượt mà cho vị trí và góc xoay.
+  - **SFX:** Tích hợp âm thanh bắn đạn (`shoot.wav`), trúng đạn (`hit.wav`), nổ (`explosion.wav`).
 
 ## 📌 GIAI ĐOẠN 5: Kiểm thử (Testing) & Debugging (Tuần 5)
 **Mục tiêu:** Chơi thử nghiệm đa máy tính và xử lý các lỗi mạng phát sinh.

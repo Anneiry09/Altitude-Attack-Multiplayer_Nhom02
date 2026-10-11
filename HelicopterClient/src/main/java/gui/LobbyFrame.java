@@ -159,6 +159,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         SwingUtilities.invokeLater(() -> {
             // Đóng băng trạng thái Lobby
             lblStatus.setText("Game Started!");
+            this.setTitle("Helicopter Combat - Arena");
             
             // Xóa sạch các component giao diện kéo thả (Lobby)
             this.getContentPane().removeAll();

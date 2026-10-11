@@ -4,44 +4,79 @@ import network.InputPacket;
 import network.StatePacket;
 import network.UDPClient;
 
+import javax.imageio.ImageIO;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
 import javax.swing.JPanel;
-import java.awt.Color;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
+import java.awt.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.geom.AffineTransform;
+import java.awt.image.BufferedImage;
+import java.io.File;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class GamePanel extends JPanel {
+    // Phân bố thiên thạch ngẫu nhiên tự nhiên (Raindrop Scatter) đồng bộ với Server {X, Y, Bán kính, Loại ảnh, Góc xoay}
+    public static final float[][] OBSTACLES = {
+        {243f, 102f, 35f, 6f, 5.39f}, // Tảng vừa-lớn
+        {612f, 61f,  35f, 6f, 0.89f}, // Tảng vừa-lớn
+        {308f, 499f, 21f, 0f, 3.18f}, // Tảng vừa
+        {733f, 88f,  21f, 1f, 2.51f}, // Tảng vừa
+        {326f, 273f, 21f, 1f, 4.50f}, // Tảng vừa
+        {458f, 196f, 14f, 2f, 6.10f}, // Tảng nhỏ
+        {406f, 110f, 14f, 3f, 0.08f}, // Tảng nhỏ
+        {266f, 181f, 14f, 3f, 5.58f}, // Tảng nhỏ
+        {195f, 362f, 14f, 3f, 0.27f}, // Tảng nhỏ
+        {532f, 395f, 14f, 2f, 1.54f}, // Tảng nhỏ
+        {668f, 249f, 9f,  4f, 3.86f}, // Mảnh vụn
+        {142f, 55f,  9f,  4f, 3.55f}, // Mảnh vụn
+        {727f, 359f, 9f,  4f, 5.97f}, // Mảnh vụn
+        {579f, 307f, 9f,  4f, 0.15f}, // Mảnh vụn
+        {679f, 541f, 9f,  4f, 4.20f}, // Mảnh vụn
+        {350f, 354f, 9f,  5f, 1.81f}, // Mảnh vụn
+        {428f, 514f, 9f,  5f, 2.72f}, // Mảnh vụn
+        {113f, 320f, 9f,  5f, 4.62f}  // Mảnh vụn
+    };
+
     private UDPClient udpClient;
     private byte myPlayerId;
-    
-    // Lưu phím đang bấm
+
     private boolean keyW, keyA, keyS, keyD;
+    private boolean isShooting;
     private float mouseX, mouseY;
     private boolean isRunning = true;
 
-    // Delta Time
     private long lastTime;
+    private byte lastHp = 100;
+    private long lastShotSoundTime = 0;
 
-    // Lớp nội bộ để lưu tọa độ hiển thị (Nội suy) tách biệt với tọa độ Server
+    // Hình ảnh tài nguyên
+    private BufferedImage bgImage;
+    private BufferedImage[] shipImages = new BufferedImage[4];
+    private BufferedImage bulletImage;
+    private BufferedImage[] meteorImages;
+
+    // Lớp nội bộ lưu tọa độ hiển thị (Nội suy)
     private class ClientPlayer {
-        float x, y;
+        float x, y, angle;
     }
     private ConcurrentHashMap<Byte, ClientPlayer> renderPlayers = new ConcurrentHashMap<>();
 
     public GamePanel(UDPClient udpClient, byte myPlayerId) {
         this.udpClient = udpClient;
         this.myPlayerId = myPlayerId;
-        
+
         this.setBackground(Color.BLACK);
         this.setFocusable(true);
 
+        loadAssets();
         setupInputListeners();
 
-        // 1. Thread gửi Input (Đóng gói phím bấm gửi Server với tốc độ ổn định 60Hz)
+        // 1. Thread gửi Input 60Hz
         new Thread(() -> {
             while (isRunning) {
                 sendInput();
@@ -49,13 +84,66 @@ public class GamePanel extends JPanel {
             }
         }).start();
 
-        // 2. Thread Render (Mở khóa FPS - Phụ thuộc vào phần cứng của người chơi)
+        // 2. Thread Render mở khóa FPS
         new Thread(() -> {
             lastTime = System.nanoTime();
             while (isRunning) {
-                repaint(); // Ép vẽ lại liên tục
-                try { Thread.sleep(2); } catch (Exception e) {} // Nghỉ 2ms để chống cháy CPU
+                repaint();
+                try { Thread.sleep(2); } catch (Exception e) {}
             }
+        }).start();
+    }
+
+    private void loadAssets() {
+        try {
+            File bgFile = new File("assets/images/black.png");
+            if (bgFile.exists()) bgImage = ImageIO.read(bgFile);
+
+            String[] shipFiles = {
+                "playerShip1_green.png",
+                "playerShip1_red.png",
+                "playerShip1_blue.png",
+                "playerShip1_orange.png"
+            };
+            for (int i = 0; i < 4; i++) {
+                File f = new File("assets/images/" + shipFiles[i]);
+                if (f.exists()) shipImages[i] = ImageIO.read(f);
+            }
+
+            File bFile = new File("assets/images/laserRed01.png");
+            if (bFile.exists()) bulletImage = ImageIO.read(bFile);
+
+            String[] meteorFiles = {
+                "meteorBrown_med1.png",   // type 0
+                "meteorBrown_med3.png",   // type 1
+                "meteorBrown_small1.png", // type 2
+                "meteorBrown_small2.png", // type 3
+                "meteorBrown_tiny1.png",  // type 4
+                "meteorBrown_tiny2.png",  // type 5
+                "meteorBrown_big3.png",   // type 6
+                "meteorBrown_big4.png"    // type 7
+            };
+            meteorImages = new BufferedImage[meteorFiles.length];
+            for (int i = 0; i < meteorFiles.length; i++) {
+                File mFile = new File("assets/images/" + meteorFiles[i]);
+                if (mFile.exists()) meteorImages[i] = ImageIO.read(mFile);
+            }
+        } catch (Exception e) {
+            System.err.println("Warning: Cannot load some images: " + e.getMessage());
+        }
+    }
+
+    private void playSound(String fileName) {
+        new Thread(() -> {
+            try {
+                File soundFile = new File("assets/sounds/" + fileName);
+                if (soundFile.exists()) {
+                    AudioInputStream audioIn = AudioSystem.getAudioInputStream(soundFile);
+                    Clip clip = AudioSystem.getClip();
+                    clip.open(audioIn);
+                    clip.start();
+                }
+            } catch (Exception ignored) {}
         }).start();
     }
 
@@ -63,42 +151,75 @@ public class GamePanel extends JPanel {
         this.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
-                switch(e.getKeyCode()) {
+                switch (e.getKeyCode()) {
                     case KeyEvent.VK_W -> keyW = true;
                     case KeyEvent.VK_A -> keyA = true;
                     case KeyEvent.VK_S -> keyS = true;
                     case KeyEvent.VK_D -> keyD = true;
+                    case KeyEvent.VK_SPACE -> {
+                        isShooting = true;
+                        long now = System.currentTimeMillis();
+                        if (now - lastShotSoundTime >= 200) {
+                            playSound("shoot.wav");
+                            lastShotSoundTime = now;
+                        }
+                    }
                 }
             }
+
             @Override
             public void keyReleased(KeyEvent e) {
-                switch(e.getKeyCode()) {
+                switch (e.getKeyCode()) {
                     case KeyEvent.VK_W -> keyW = false;
                     case KeyEvent.VK_A -> keyA = false;
                     case KeyEvent.VK_S -> keyS = false;
                     case KeyEvent.VK_D -> keyD = false;
+                    case KeyEvent.VK_SPACE -> isShooting = false;
                 }
             }
         });
 
-        this.addMouseMotionListener(new MouseAdapter() {
+        MouseAdapter mouseHandler = new MouseAdapter() {
             @Override
             public void mouseMoved(MouseEvent e) {
                 mouseX = e.getX();
                 mouseY = e.getY();
             }
+
             @Override
             public void mouseDragged(MouseEvent e) {
                 mouseX = e.getX();
                 mouseY = e.getY();
             }
-        });
+
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (e.getButton() == MouseEvent.BUTTON1) {
+                    isShooting = true;
+                    long now = System.currentTimeMillis();
+                    if (now - lastShotSoundTime >= 200) {
+                        playSound("shoot.wav");
+                        lastShotSoundTime = now;
+                    }
+                }
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                if (e.getButton() == MouseEvent.BUTTON1) {
+                    isShooting = false;
+                }
+            }
+        };
+
+        this.addMouseMotionListener(mouseHandler);
+        this.addMouseListener(mouseHandler);
     }
 
     private void sendInput() {
         InputPacket input = new InputPacket();
         input.playerId = myPlayerId;
-        
+
         if (keyW) input.moveY = -1;
         else if (keyS) input.moveY = 1;
         else input.moveY = 0;
@@ -107,9 +228,23 @@ public class GamePanel extends JPanel {
         else if (keyD) input.moveX = 1;
         else input.moveX = 0;
 
-        input.mouseAngle = 0; 
-        input.isShooting = false;
-        
+        ClientPlayer myPlayer = renderPlayers.get(myPlayerId);
+        if (myPlayer != null) {
+            input.mouseAngle = (float) Math.atan2(mouseY - myPlayer.y, mouseX - myPlayer.x);
+        } else {
+            input.mouseAngle = 0;
+        }
+
+        input.isShooting = isShooting;
+
+        if (isShooting) {
+            long now = System.currentTimeMillis();
+            if (now - lastShotSoundTime >= 200) {
+                playSound("shoot.wav");
+                lastShotSoundTime = now;
+            }
+        }
+
         udpClient.sendInput(input);
     }
 
@@ -117,11 +252,46 @@ public class GamePanel extends JPanel {
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         Graphics2D g2d = (Graphics2D) g;
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        // Tính toán Delta Time (Khoảng thời gian trôi qua giữa 2 lần vẽ, đơn vị: Giây)
         long now = System.nanoTime();
         float deltaTime = (now - lastTime) / 1_000_000_000.0f;
         lastTime = now;
+
+        // 1. Vẽ nền (Lát gạch 256x256)
+        if (bgImage != null) {
+            int bw = bgImage.getWidth();
+            int bh = bgImage.getHeight();
+            for (int x = 0; x < getWidth(); x += bw) {
+                for (int y = 0; y < getHeight(); y += bh) {
+                    g2d.drawImage(bgImage, x, y, null);
+                }
+            }
+        } else {
+            g2d.setColor(Color.BLACK);
+            g2d.fillRect(0, 0, getWidth(), getHeight());
+        }
+
+        // 2. Vẽ toàn bộ thiên thạch rải rác tự nhiên dạng hạt mưa
+        for (float[] obs : OBSTACLES) {
+            float ox = obs[0], oy = obs[1], or = obs[2];
+            int type = (int) obs[3];
+            float rot = obs[4];
+            BufferedImage mImg = (meteorImages != null && type < meteorImages.length) ? meteorImages[type] : null;
+
+            if (mImg != null) {
+                int mw = mImg.getWidth();
+                int mh = mImg.getHeight();
+                AffineTransform old = g2d.getTransform();
+                g2d.translate(ox, oy);
+                g2d.rotate(rot);
+                g2d.drawImage(mImg, -mw / 2, -mh / 2, null);
+                g2d.setTransform(old);
+            } else {
+                g2d.setColor(new Color(110, 70, 45));
+                g2d.fillOval((int) (ox - or), (int) (oy - or), (int) (or * 2), (int) (or * 2));
+            }
+        }
 
         StatePacket state = udpClient.latestState;
         if (state == null) {
@@ -130,38 +300,98 @@ public class GamePanel extends JPanel {
             return;
         }
 
-        // Tốc độ bám theo tọa độ gốc (Càng cao thì trượt càng nhanh)
-        float lerpSpeed = 15.0f; 
+        // 3. Vẽ tất cả viên đạn (Xoay dọc chính xác theo hướng bay)
+        for (int bIdx = 0; bIdx < state.bulletCount; bIdx++) {
+            float bx = state.bulletXs[bIdx];
+            float by = state.bulletYs[bIdx];
+            float bAngle = state.bulletAngles[bIdx];
 
-        // Cập nhật và nội suy tọa độ
+            if (bulletImage != null) {
+                int bw = bulletImage.getWidth();
+                int bh = bulletImage.getHeight();
+
+                AffineTransform old = g2d.getTransform();
+                g2d.translate(bx, by);
+                g2d.rotate(bAngle + Math.PI / 2);
+                g2d.drawImage(bulletImage, -bw / 2, -bh / 2, null);
+                g2d.setTransform(old);
+            } else {
+                g2d.setColor(Color.YELLOW);
+                g2d.fillOval((int) bx - 3, (int) by - 3, 6, 6);
+            }
+        }
+
+        // 4. Vẽ tất cả máy bay (Interpolation nhanh, dứt khoát)
+        float lerpSpeed = 25.0f;
         for (int i = 0; i < state.playerCount; i++) {
             byte pid = state.playerIds[i];
             float targetX = state.playerXs[i];
             float targetY = state.playerYs[i];
-            
-            // Lấy tọa độ hiển thị hiện tại. Nếu mới xuất hiện thì đặt thẳng tại Target
+            float targetAngle = state.playerAngles[i];
+            byte hp = state.playerHPs[i];
+            byte score = state.playerScores[i];
+
+            if (pid == myPlayerId) {
+                if (hp < lastHp) {
+                    if (hp == 0) playSound("explosion.wav");
+                    else playSound("hit.wav");
+                }
+                lastHp = hp;
+            }
+
             ClientPlayer rp = renderPlayers.computeIfAbsent(pid, k -> {
-                ClientPlayer newPlayer = new ClientPlayer();
-                newPlayer.x = targetX;
-                newPlayer.y = targetY;
-                return newPlayer;
+                ClientPlayer np = new ClientPlayer();
+                np.x = targetX;
+                np.y = targetY;
+                np.angle = targetAngle;
+                return np;
             });
 
-            // THUẬT TOÁN LERP BÙ TRỪ DELTA TIME:
-            // Tọa_độ_vẽ = Tọa_độ_vẽ + Khoảng_cách * Tốc_độ_trượt * Thời_gian_trôi_qua
             rp.x += (targetX - rp.x) * lerpSpeed * deltaTime;
             rp.y += (targetY - rp.y) * lerpSpeed * deltaTime;
+            rp.angle = targetAngle;
 
-            // Vẽ khối vuông
-            if (pid == myPlayerId) {
-                g2d.setColor(Color.GREEN);
-            } else {
-                g2d.setColor(Color.RED);
+            if (hp <= 0) {
+                g2d.setColor(Color.GRAY);
+                g2d.drawString("RESPAWNING...", (int) rp.x - 40, (int) rp.y);
+                continue;
             }
-            g2d.fillRect((int)rp.x, (int)rp.y, 30, 30);
-            
+
+            BufferedImage ship = shipImages[pid % 4];
+            int shipW = 45;
+            int shipH = 40;
+
+            AffineTransform old = g2d.getTransform();
+            g2d.translate(rp.x, rp.y);
+            g2d.rotate(rp.angle + Math.PI / 2);
+
+            if (ship != null) {
+                g2d.drawImage(ship, -shipW / 2, -shipH / 2, shipW, shipH, null);
+            } else {
+                g2d.setColor(pid == myPlayerId ? Color.GREEN : Color.RED);
+                g2d.fillRect(-15, -15, 30, 30);
+            }
+            g2d.setTransform(old);
+
+            // Vẽ thanh máu (HP Bar)
+            int barW = 40;
+            int barH = 5;
+            int barX = (int) rp.x - barW / 2;
+            int barY = (int) rp.y - shipH / 2 - 12;
+
+            g2d.setColor(Color.RED);
+            g2d.fillRect(barX, barY, barW, barH);
+            g2d.setColor(Color.GREEN);
+            int currentHpW = (int) (barW * (Math.max(0, hp) / 100.0f));
+            g2d.fillRect(barX, barY, currentHpW, barH);
+            g2d.setColor(Color.BLACK);
+            g2d.drawRect(barX, barY, barW, barH);
+
+            // Tên + Điểm
             g2d.setColor(Color.WHITE);
-            g2d.drawString("P" + pid, rp.x, rp.y - 5);
+            g2d.setFont(new Font("Arial", Font.BOLD, 11));
+            String info = (pid == myPlayerId ? "[YOU] " : "") + "P" + pid + " (" + score + " pts)";
+            g2d.drawString(info, barX - 5, barY - 3);
         }
     }
 }
