@@ -42,8 +42,8 @@ public class UDPClient {
                     
                     StatePacket state = StatePacket.fromBytes(data);
                     
-                    // Nếu gói mới hơn gói hiện tại thì cập nhật
-                    if (latestState == null || state.tick > latestState.tick) {
+                    // Nếu gói mới hơn gói hiện tại, hoặc Server vừa reset trận mới (tick nhỏ hơn hẳn)
+                    if (latestState == null || state.tick > latestState.tick || state.tick < latestState.tick - 100) {
                         latestState = state;
                     }
                 } catch (IOException e) {
@@ -51,6 +51,10 @@ public class UDPClient {
                 }
             }
         }).start();
+    }
+
+    public void resetState() {
+        this.latestState = null;
     }
 
     public void sendInput(InputPacket input) {

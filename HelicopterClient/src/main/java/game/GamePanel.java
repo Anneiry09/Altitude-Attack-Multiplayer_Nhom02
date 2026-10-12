@@ -2,9 +2,11 @@ package game;
 
 import network.InputPacket;
 import network.StatePacket;
+import network.TCPClient;
 import network.UDPClient;
 
 import javax.imageio.ImageIO;
+import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
@@ -17,33 +19,40 @@ import java.awt.event.MouseEvent;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class GamePanel extends JPanel {
     // Phân bố thiên thạch ngẫu nhiên tự nhiên (Raindrop Scatter) đồng bộ với Server {X, Y, Bán kính, Loại ảnh, Góc xoay}
     public static final float[][] OBSTACLES = {
-        {243f, 102f, 35f, 6f, 5.39f}, // Tảng vừa-lớn
-        {612f, 61f,  35f, 6f, 0.89f}, // Tảng vừa-lớn
-        {308f, 499f, 21f, 0f, 3.18f}, // Tảng vừa
-        {733f, 88f,  21f, 1f, 2.51f}, // Tảng vừa
-        {326f, 273f, 21f, 1f, 4.50f}, // Tảng vừa
-        {458f, 196f, 14f, 2f, 6.10f}, // Tảng nhỏ
-        {406f, 110f, 14f, 3f, 0.08f}, // Tảng nhỏ
-        {266f, 181f, 14f, 3f, 5.58f}, // Tảng nhỏ
-        {195f, 362f, 14f, 3f, 0.27f}, // Tảng nhỏ
-        {532f, 395f, 14f, 2f, 1.54f}, // Tảng nhỏ
-        {668f, 249f, 9f,  4f, 3.86f}, // Mảnh vụn
-        {142f, 55f,  9f,  4f, 3.55f}, // Mảnh vụn
-        {727f, 359f, 9f,  4f, 5.97f}, // Mảnh vụn
-        {579f, 307f, 9f,  4f, 0.15f}, // Mảnh vụn
-        {679f, 541f, 9f,  4f, 4.20f}, // Mảnh vụn
-        {350f, 354f, 9f,  5f, 1.81f}, // Mảnh vụn
-        {428f, 514f, 9f,  5f, 2.72f}, // Mảnh vụn
-        {113f, 320f, 9f,  5f, 4.62f}  // Mảnh vụn
+        {243f, 102f, 35f, 6f, 5.39f},
+        {612f, 61f,  35f, 6f, 0.89f},
+        {308f, 499f, 21f, 0f, 3.18f},
+        {733f, 88f,  21f, 1f, 2.51f},
+        {326f, 273f, 21f, 1f, 4.50f},
+        {458f, 196f, 14f, 2f, 6.10f},
+        {406f, 110f, 14f, 3f, 0.08f},
+        {266f, 181f, 14f, 3f, 5.58f},
+        {195f, 362f, 14f, 3f, 0.27f},
+        {532f, 395f, 14f, 2f, 1.54f},
+        {668f, 249f, 9f,  4f, 3.86f},
+        {142f, 55f,  9f,  4f, 3.55f},
+        {727f, 359f, 9f,  4f, 5.97f},
+        {579f, 307f, 9f,  4f, 0.15f},
+        {679f, 541f, 9f,  4f, 4.20f},
+        {350f, 354f, 9f,  5f, 1.81f},
+        {428f, 514f, 9f,  5f, 2.72f},
+        {113f, 320f, 9f,  5f, 4.62f}
     };
 
     private UDPClient udpClient;
+    private TCPClient tcpClient;
     private byte myPlayerId;
+    private Map<Byte, String> playerNames;
 
     private boolean keyW, keyA, keyS, keyD;
     private boolean isShooting;
@@ -52,13 +61,24 @@ public class GamePanel extends JPanel {
 
     private long lastTime;
     private byte lastHp = 100;
+    private byte lastMyShieldHits = 0;
     private long lastShotSoundTime = 0;
+    private boolean hasPlayedGameOverSound = false;
+
+    // Trạng thái Rematch (Chơi lại)
+    private boolean isRematchReady = false;
+    private int rematchCountdown = -1;
 
     // Hình ảnh tài nguyên
     private BufferedImage bgImage;
     private BufferedImage[] shipImages = new BufferedImage[4];
     private BufferedImage bulletImage;
     private BufferedImage[] meteorImages;
+    private BufferedImage[] shieldImages = new BufferedImage[4]; // 1: Bronze, 2: Silver, 3: Gold
+    private BufferedImage[] pillImages = new BufferedImage[4];   // 1: Red, 2: Green, 3: Blue
+    private BufferedImage laserRedSphereImage;   // laserRed08.png
+    private BufferedImage laserGreenSphereImage; // laserGreen14.png
+    private BufferedImage laserBlueSphereImage;  // laserBlue08.png
 
     // Lớp nội bộ lưu tọa độ hiển thị (Nội suy)
     private class ClientPlayer {
@@ -66,9 +86,47 @@ public class GamePanel extends JPanel {
     }
     private ConcurrentHashMap<Byte, ClientPlayer> renderPlayers = new ConcurrentHashMap<>();
 
+    // Quản lý âm thanh & hiệu ứng Buff
+    private int lastGreenSubCount = 0;
+    private int lastGreenMainCount = 0;
+    private byte lastMyWeaponBuff = 0;
+
+    // Lớp hiệu ứng nổ và sóng xung kích (Visual Explosion Effects)
+    private static class VisualEffect {
+        float x, y;
+        float maxRadius;
+        Color color;
+        long startTime;
+        long durationMs;
+
+        VisualEffect(float x, float y, float maxRadius, Color color, long durationMs) {
+            this.x = x;
+            this.y = y;
+            this.maxRadius = maxRadius;
+            this.color = color;
+            this.startTime = System.currentTimeMillis();
+            this.durationMs = durationMs;
+        }
+    }
+    private final List<VisualEffect> visualEffects = new CopyOnWriteArrayList<>();
+
+    private void addExplosionEffect(float x, float y, Color col) {
+        visualEffects.add(new VisualEffect(x, y, 42.0f, col, 280));
+    }
+
     public GamePanel(UDPClient udpClient, byte myPlayerId) {
+        this(udpClient, null, new HashMap<>());
+    }
+
+    public GamePanel(UDPClient udpClient, byte myPlayerId, Map<Byte, String> playerNames) {
+        this(udpClient, null, playerNames);
+    }
+
+    public GamePanel(UDPClient udpClient, TCPClient tcpClient, Map<Byte, String> playerNames) {
         this.udpClient = udpClient;
-        this.myPlayerId = myPlayerId;
+        this.tcpClient = tcpClient;
+        this.myPlayerId = (tcpClient != null) ? tcpClient.getMyPlayerId() : 0;
+        this.playerNames = (playerNames != null) ? playerNames : new HashMap<>();
 
         this.setBackground(Color.BLACK);
         this.setFocusable(true);
@@ -94,9 +152,81 @@ public class GamePanel extends JPanel {
         }).start();
     }
 
+    public void setCountdown(int seconds) {
+        this.rematchCountdown = seconds;
+        repaint();
+    }
+
+    public void resetForRematch() {
+        this.isRematchReady = false;
+        this.rematchCountdown = -1;
+        this.hasPlayedGameOverSound = false;
+        this.lastHp = 100;
+        this.lastMyShieldHits = 0;
+        this.keyW = false;
+        this.keyA = false;
+        this.keyS = false;
+        this.keyD = false;
+        this.isShooting = false;
+        this.lastGreenSubCount = 0;
+        this.lastGreenMainCount = 0;
+        this.lastMyWeaponBuff = 0;
+        this.visualEffects.clear();
+        this.renderPlayers.clear();
+        if (udpClient != null) {
+            udpClient.resetState();
+        }
+        repaint();
+    }
+
+    public interface GamePanelListener {
+        void onReturnToLobby();
+    }
+    private GamePanelListener panelListener;
+
+    public void setGamePanelListener(GamePanelListener listener) {
+        this.panelListener = listener;
+    }
+
+    public void stopGame() {
+        this.isRunning = false;
+        if (udpClient != null) {
+            udpClient.disconnect();
+        }
+    }
+
+    public void returnToLobby() {
+        stopGame();
+        if (tcpClient != null) {
+            tcpClient.sendLeaveRoom();
+        }
+        if (panelListener != null) {
+            panelListener.onReturnToLobby();
+        }
+    }
+
+    private void triggerRematchReady() {
+        StatePacket state = udpClient.latestState;
+        if (state != null && state.remainingSeconds <= 0 && !isRematchReady) {
+            isRematchReady = true;
+            if (tcpClient != null) {
+                tcpClient.sendRematchReady();
+            }
+            repaint();
+        }
+    }
+
+    private File findAssetFile(String relativePath) {
+        File f1 = new File(relativePath);
+        if (f1.exists()) return f1;
+        File f2 = new File("HelicopterClient/" + relativePath);
+        if (f2.exists()) return f2;
+        return f1;
+    }
+
     private void loadAssets() {
         try {
-            File bgFile = new File("assets/images/black.png");
+            File bgFile = findAssetFile("assets/images/black.png");
             if (bgFile.exists()) bgImage = ImageIO.read(bgFile);
 
             String[] shipFiles = {
@@ -106,11 +236,11 @@ public class GamePanel extends JPanel {
                 "playerShip1_orange.png"
             };
             for (int i = 0; i < 4; i++) {
-                File f = new File("assets/images/" + shipFiles[i]);
+                File f = findAssetFile("assets/images/" + shipFiles[i]);
                 if (f.exists()) shipImages[i] = ImageIO.read(f);
             }
 
-            File bFile = new File("assets/images/laserRed01.png");
+            File bFile = findAssetFile("assets/images/laserRed01.png");
             if (bFile.exists()) bulletImage = ImageIO.read(bFile);
 
             String[] meteorFiles = {
@@ -125,9 +255,40 @@ public class GamePanel extends JPanel {
             };
             meteorImages = new BufferedImage[meteorFiles.length];
             for (int i = 0; i < meteorFiles.length; i++) {
-                File mFile = new File("assets/images/" + meteorFiles[i]);
+                File mFile = findAssetFile("assets/images/" + meteorFiles[i]);
                 if (mFile.exists()) meteorImages[i] = ImageIO.read(mFile);
             }
+
+            String[] shieldFiles = {
+                "",
+                "shield_bronze.png", // type 1
+                "shield_silver.png", // type 2
+                "shield_gold.png"    // type 3
+            };
+            for (int i = 1; i <= 3; i++) {
+                File sFile = findAssetFile("assets/images/" + shieldFiles[i]);
+                if (sFile.exists()) shieldImages[i] = ImageIO.read(sFile);
+            }
+
+            String[] pillFiles = {
+                "",
+                "pill_red.png",   // type 1
+                "pill_green.png", // type 2
+                "pill_blue.png"   // type 3
+            };
+            for (int i = 1; i <= 3; i++) {
+                File pFile = findAssetFile("assets/images/" + pillFiles[i]);
+                if (pFile.exists()) pillImages[i] = ImageIO.read(pFile);
+            }
+
+            File lrFile = findAssetFile("assets/images/laserRed08.png");
+            if (lrFile.exists()) laserRedSphereImage = ImageIO.read(lrFile);
+
+            File lgFile = findAssetFile("assets/images/laserGreen14.png");
+            if (lgFile.exists()) laserGreenSphereImage = ImageIO.read(lgFile);
+
+            File lbFile = findAssetFile("assets/images/laserBlue08.png");
+            if (lbFile.exists()) laserBlueSphereImage = ImageIO.read(lbFile);
         } catch (Exception e) {
             System.err.println("Warning: Cannot load some images: " + e.getMessage());
         }
@@ -136,15 +297,48 @@ public class GamePanel extends JPanel {
     private void playSound(String fileName) {
         new Thread(() -> {
             try {
-                File soundFile = new File("assets/sounds/" + fileName);
+                File soundFile = findAssetFile("assets/sounds/" + fileName);
                 if (soundFile.exists()) {
                     AudioInputStream audioIn = AudioSystem.getAudioInputStream(soundFile);
+                    AudioFormat baseFormat = audioIn.getFormat();
+                    AudioFormat decodedFormat = new AudioFormat(
+                        AudioFormat.Encoding.PCM_SIGNED,
+                        baseFormat.getSampleRate(),
+                        16,
+                        baseFormat.getChannels(),
+                        baseFormat.getChannels() * 2,
+                        baseFormat.getSampleRate(),
+                        false
+                    );
+                    AudioInputStream pcmStream = AudioSystem.getAudioInputStream(decodedFormat, audioIn);
                     Clip clip = AudioSystem.getClip();
-                    clip.open(audioIn);
+                    clip.open(pcmStream);
                     clip.start();
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                try {
+                    File soundFile = findAssetFile("assets/sounds/" + fileName);
+                    if (soundFile.exists()) {
+                        AudioInputStream audioIn = AudioSystem.getAudioInputStream(soundFile);
+                        Clip clip = AudioSystem.getClip();
+                        clip.open(audioIn);
+                        clip.start();
+                    }
+                } catch (Exception ignored) {}
+            }
         }).start();
+    }
+
+    private byte getMyWeaponBuff() {
+        StatePacket curState = udpClient.latestState;
+        if (curState != null) {
+            for (int i = 0; i < curState.playerCount; i++) {
+                if (curState.playerIds[i] == myPlayerId) {
+                    return (i < curState.playerWeaponBuffs.length) ? curState.playerWeaponBuffs[i] : 0;
+                }
+            }
+        }
+        return 0;
     }
 
     private void setupInputListeners() {
@@ -156,12 +350,21 @@ public class GamePanel extends JPanel {
                     case KeyEvent.VK_A -> keyA = true;
                     case KeyEvent.VK_S -> keyS = true;
                     case KeyEvent.VK_D -> keyD = true;
+                    case KeyEvent.VK_R -> triggerRematchReady(); // Phím tắt R để sẵn sàng chơi lại
                     case KeyEvent.VK_SPACE -> {
                         isShooting = true;
-                        long now = System.currentTimeMillis();
-                        if (now - lastShotSoundTime >= 200) {
-                            playSound("shoot.wav");
-                            lastShotSoundTime = now;
+                        byte buff = getMyWeaponBuff();
+                        if (buff != 3) { // Buff Blue: Không bắn súng, không phát âm thanh bắn
+                            long now = System.currentTimeMillis();
+                            long shotCd = (buff == 1) ? 400 : 200;
+                            if (now - lastShotSoundTime >= shotCd) {
+                                if (buff == 2) {
+                                    playSound("pill_green_shoot.wav");
+                                } else {
+                                    playSound("shoot.wav");
+                                }
+                                lastShotSoundTime = now;
+                            }
                         }
                     }
                 }
@@ -194,12 +397,51 @@ public class GamePanel extends JPanel {
 
             @Override
             public void mousePressed(MouseEvent e) {
+                // Kiểm tra click vào nút Rematch hoặc nút Về sảnh khi trận đấu đã kết thúc
+                StatePacket state = udpClient.latestState;
+                if (state != null && state.remainingSeconds <= 0) {
+                    int boardW = 480;
+                    int boardH = 380;
+                    int boardX = (getWidth() - boardW) / 2;
+                    int boardY = (getHeight() - boardH) / 2;
+                    int btnH = 42;
+                    int btnY = boardY + boardH - 58;
+                    int btnRematchW = 250;
+                    int btnLobbyW = 140;
+                    int gap = 14;
+                    int totalW = btnRematchW + gap + btnLobbyW;
+                    int btnRematchX = boardX + (boardW - totalW) / 2;
+                    int btnLobbyX = btnRematchX + btnRematchW + gap;
+
+                    // Click nút Rematch
+                    if (e.getX() >= btnRematchX && e.getX() <= btnRematchX + btnRematchW &&
+                        e.getY() >= btnY && e.getY() <= btnY + btnH) {
+                        triggerRematchReady();
+                        return;
+                    }
+
+                    // Click nút Về sảnh
+                    if (e.getX() >= btnLobbyX && e.getX() <= btnLobbyX + btnLobbyW &&
+                        e.getY() >= btnY && e.getY() <= btnY + btnH) {
+                        returnToLobby();
+                        return;
+                    }
+                }
+
                 if (e.getButton() == MouseEvent.BUTTON1) {
                     isShooting = true;
-                    long now = System.currentTimeMillis();
-                    if (now - lastShotSoundTime >= 200) {
-                        playSound("shoot.wav");
-                        lastShotSoundTime = now;
+                    byte buff = getMyWeaponBuff();
+                    if (buff != 3) { // Buff Blue: Không bắn súng, không phát âm thanh bắn
+                        long now = System.currentTimeMillis();
+                        long shotCd = (buff == 1) ? 400 : 200;
+                        if (now - lastShotSoundTime >= shotCd) {
+                            if (buff == 2) {
+                                playSound("pill_green_shoot.wav");
+                            } else {
+                                playSound("shoot.wav");
+                            }
+                            lastShotSoundTime = now;
+                        }
                     }
                 }
             }
@@ -217,6 +459,18 @@ public class GamePanel extends JPanel {
     }
 
     private void sendInput() {
+        // Nếu đã hết giờ: khóa hoàn toàn điều khiển
+        if (udpClient.latestState != null && udpClient.latestState.remainingSeconds <= 0) {
+            InputPacket input = new InputPacket();
+            input.playerId = myPlayerId;
+            input.moveX = 0;
+            input.moveY = 0;
+            input.mouseAngle = 0;
+            input.isShooting = false;
+            udpClient.sendInput(input);
+            return;
+        }
+
         InputPacket input = new InputPacket();
         input.playerId = myPlayerId;
 
@@ -238,10 +492,15 @@ public class GamePanel extends JPanel {
         input.isShooting = isShooting;
 
         if (isShooting) {
-            long now = System.currentTimeMillis();
-            if (now - lastShotSoundTime >= 200) {
-                playSound("shoot.wav");
-                lastShotSoundTime = now;
+            byte myBuff = getMyWeaponBuff();
+            // Khi có Buff Green (bắn từng nhịp click) hoặc Buff Blue (không bắn thường): không phát âm thanh liên tục khi giữ chuột
+            if (myBuff != 2 && myBuff != 3) {
+                long now = System.currentTimeMillis();
+                long shotCd = (myBuff == 1) ? 400 : 200;
+                if (now - lastShotSoundTime >= shotCd) {
+                    playSound("shoot.wav");
+                    lastShotSoundTime = now;
+                }
             }
         }
 
@@ -300,28 +559,211 @@ public class GamePanel extends JPanel {
             return;
         }
 
-        // 3. Vẽ tất cả viên đạn (Xoay dọc chính xác theo hướng bay)
+        // A. Kiểm tra nhặt thuốc nâng cấp (Pill Pickup Sound)
+        byte curMyBuff = 0;
+        byte myBuffRemainingSec = 0;
+        for (int pIdx = 0; pIdx < state.playerCount; pIdx++) {
+            if (state.playerIds[pIdx] == myPlayerId) {
+                curMyBuff = (pIdx < state.playerWeaponBuffs.length) ? state.playerWeaponBuffs[pIdx] : 0;
+                myBuffRemainingSec = (pIdx < state.playerBuffRemainingSeconds.length) ? state.playerBuffRemainingSeconds[pIdx] : 0;
+                break;
+            }
+        }
+        if (curMyBuff > 0 && curMyBuff != lastMyWeaponBuff) {
+            playSound("pill_pickup.wav");
+        }
+        lastMyWeaponBuff = curMyBuff;
+
+        // B. Phát âm thanh khi có đạn xanh lá được bắn ra trên bản đồ
+        int curGreenMainCount = 0;
+        int curGreenSubCount = 0;
+        for (int b = 0; b < state.bulletCount; b++) {
+            byte bType = (b < state.bulletTypes.length) ? state.bulletTypes[b] : 0;
+            if (bType == 2) curGreenMainCount++;
+            else if (bType == 3) curGreenSubCount++;
+        }
+
+        if (curGreenMainCount > lastGreenMainCount) {
+            if (System.currentTimeMillis() - lastShotSoundTime >= 100) {
+                playSound("pill_green_shoot.wav");
+            }
+        }
+        lastGreenMainCount = curGreenMainCount;
+
+        // C. Phát âm thanh nổ đạn xanh & tạo hiệu ứng nổ (Cluster Explosion)
+        if (curGreenSubCount > lastGreenSubCount) {
+            playSound("pill_green_explode.wav");
+            for (int b = 0; b < state.bulletCount; b++) {
+                byte bType = (b < state.bulletTypes.length) ? state.bulletTypes[b] : 0;
+                if (bType == 3) {
+                    addExplosionEffect(state.bulletXs[b], state.bulletYs[b], new Color(60, 255, 100));
+                    break;
+                }
+            }
+        }
+        lastGreenSubCount = curGreenSubCount;
+
+        // 2.5. Vẽ các vật phẩm Khiên xuất hiện trên bản đồ (Rớt ngẫu nhiên theo đợt)
+        float itemPulse = (float) Math.sin(System.currentTimeMillis() * 0.006f) * 3.0f;
+        for (int sIdx = 0; sIdx < state.shieldItemCount; sIdx++) {
+            byte sType = state.shieldItemTypes[sIdx];
+            float sx = state.shieldItemXs[sIdx];
+            float sy = state.shieldItemYs[sIdx];
+
+            Color glowCol;
+            if (sType == 3) glowCol = new Color(255, 215, 0);       // Vàng
+            else if (sType == 2) glowCol = new Color(180, 230, 255); // Bạc
+            else glowCol = new Color(205, 127, 50);                 // Đồng
+
+            // Vòng hào quang phát sáng dưới đất
+            g2d.setColor(new Color(glowCol.getRed(), glowCol.getGreen(), glowCol.getBlue(), 45));
+            g2d.fillOval((int) (sx - 20 - itemPulse), (int) (sy - 20 - itemPulse), (int) ((20 + itemPulse) * 2), (int) ((20 + itemPulse) * 2));
+            g2d.setColor(new Color(glowCol.getRed(), glowCol.getGreen(), glowCol.getBlue(), 180));
+            g2d.setStroke(new BasicStroke(1.5f));
+            g2d.drawOval((int) (sx - 17 - itemPulse * 0.5f), (int) (sy - 17 - itemPulse * 0.5f), (int) ((17 + itemPulse * 0.5f) * 2), (int) ((17 + itemPulse * 0.5f) * 2));
+
+            // Hiệu ứng lơ lửng nhẹ và vẽ Icon
+            float hoverY = (float) Math.sin(System.currentTimeMillis() * 0.005f + sIdx) * 3.0f;
+            BufferedImage sImg = (sType >= 1 && sType <= 3) ? shieldImages[sType] : null;
+            if (sImg != null) {
+                int sw = sImg.getWidth();
+                int sh = sImg.getHeight();
+                g2d.drawImage(sImg, (int) (sx - sw / 2.0f), (int) (sy - sh / 2.0f + hoverY), null);
+            } else {
+                g2d.setColor(glowCol);
+                g2d.fillRoundRect((int) (sx - 12), (int) (sy - 12 + hoverY), 24, 24, 6, 6);
+            }
+        }
+
+        // 2.6. Vẽ các vật phẩm Thuốc nâng cấp (Pills) xuất hiện trên bản đồ
+        for (int pIdx = 0; pIdx < state.pillItemCount; pIdx++) {
+            byte pType = state.pillItemTypes[pIdx];
+            float px = state.pillItemXs[pIdx];
+            float py = state.pillItemYs[pIdx];
+
+            Color glowCol;
+            if (pType == 1) glowCol = new Color(255, 60, 60);       // Đỏ (Pill Red)
+            else if (pType == 2) glowCol = new Color(60, 255, 100);  // Xanh lá (Pill Green)
+            else glowCol = new Color(60, 160, 255);                 // Xanh dương (Pill Blue)
+
+            // Vòng hào quang phát sáng dưới đất
+            g2d.setColor(new Color(glowCol.getRed(), glowCol.getGreen(), glowCol.getBlue(), 55));
+            g2d.fillOval((int) (px - 18 - itemPulse), (int) (py - 18 - itemPulse), (int) ((18 + itemPulse) * 2), (int) ((18 + itemPulse) * 2));
+            g2d.setColor(new Color(glowCol.getRed(), glowCol.getGreen(), glowCol.getBlue(), 190));
+            g2d.setStroke(new BasicStroke(1.5f));
+            g2d.drawOval((int) (px - 15 - itemPulse * 0.5f), (int) (py - 15 - itemPulse * 0.5f), (int) ((15 + itemPulse * 0.5f) * 2), (int) ((15 + itemPulse * 0.5f) * 2));
+
+            // Hiệu ứng lơ lửng nhẹ và vẽ Icon thuốc (22x21)
+            float hoverY = (float) Math.sin(System.currentTimeMillis() * 0.005f + pIdx * 1.5f) * 3.0f;
+            BufferedImage pImg = (pType >= 1 && pType <= 3) ? pillImages[pType] : null;
+            if (pImg != null) {
+                int pw = pImg.getWidth();
+                int ph = pImg.getHeight();
+                g2d.drawImage(pImg, (int) (px - pw / 2.0f), (int) (py - ph / 2.0f + hoverY), null);
+            } else {
+                g2d.setColor(glowCol);
+                g2d.fillRoundRect((int) (px - 10), (int) (py - 10 + hoverY), 20, 20, 5, 5);
+            }
+        }
+
+        // 3. Vẽ tất cả viên đạn (Xoay dọc chính xác theo hướng bay hoặc đạn khối cầu)
         for (int bIdx = 0; bIdx < state.bulletCount; bIdx++) {
             float bx = state.bulletXs[bIdx];
             float by = state.bulletYs[bIdx];
             float bAngle = state.bulletAngles[bIdx];
+            byte bType = (bIdx < state.bulletTypes.length) ? state.bulletTypes[bIdx] : 0;
 
-            if (bulletImage != null) {
-                int bw = bulletImage.getWidth();
-                int bh = bulletImage.getHeight();
+            if (bType == 1) { // Đạn cầu đỏ (Pill Red - 3 luồng đạn)
+                if (laserRedSphereImage != null) {
+                    int sphereSize = 24; // Kích thước hiển thị gọn gàng, sắc nét
+                    AffineTransform old = g2d.getTransform();
+                    g2d.translate(bx, by);
+                    g2d.rotate(bAngle + Math.PI / 2);
+                    g2d.drawImage(laserRedSphereImage, -sphereSize / 2, -sphereSize / 2, sphereSize, sphereSize, null);
+                    g2d.setTransform(old);
+                } else {
+                    g2d.setColor(new Color(255, 60, 60));
+                    g2d.fillOval((int) bx - 6, (int) by - 6, 12, 12);
+                }
+            } else if (bType == 2) { // Đạn cầu xanh lá mẹ (Pill Green - Cluster Main)
+                if (laserGreenSphereImage != null) {
+                    int sphereSize = 26; // Kích thước đạn mẹ 26px
+                    AffineTransform old = g2d.getTransform();
+                    g2d.translate(bx, by);
+                    g2d.rotate(bAngle + Math.PI / 2);
+                    // Hào quang xanh lá quanh quả cầu nén
+                    g2d.setColor(new Color(60, 255, 100, 60));
+                    g2d.fillOval(-16, -16, 32, 32);
+                    g2d.drawImage(laserGreenSphereImage, -sphereSize / 2, -sphereSize / 2, sphereSize, sphereSize, null);
+                    g2d.setTransform(old);
+                } else {
+                    g2d.setColor(new Color(60, 255, 100));
+                    g2d.fillOval((int) bx - 7, (int) by - 7, 14, 14);
+                }
+            } else if (bType == 3) { // Đạn cầu xanh lá con (Pill Green - Frag Sub 4 mảnh)
+                if (laserGreenSphereImage != null) {
+                    int sphereSize = 17; // Kích thước đạn con nhỏ gọn 17px
+                    AffineTransform old = g2d.getTransform();
+                    g2d.translate(bx, by);
+                    g2d.rotate(bAngle + Math.PI / 2);
+                    g2d.drawImage(laserGreenSphereImage, -sphereSize / 2, -sphereSize / 2, sphereSize, sphereSize, null);
+                    g2d.setTransform(old);
+                } else {
+                    g2d.setColor(new Color(120, 255, 140));
+                    g2d.fillOval((int) bx - 4, (int) by - 4, 8, 8);
+                }
+            } else { // Đạn laser đỏ dài thông thường (type 0)
+                if (bulletImage != null) {
+                    int bw = bulletImage.getWidth();
+                    int bh = bulletImage.getHeight();
 
-                AffineTransform old = g2d.getTransform();
-                g2d.translate(bx, by);
-                g2d.rotate(bAngle + Math.PI / 2);
-                g2d.drawImage(bulletImage, -bw / 2, -bh / 2, null);
-                g2d.setTransform(old);
-            } else {
-                g2d.setColor(Color.YELLOW);
-                g2d.fillOval((int) bx - 3, (int) by - 3, 6, 6);
+                    AffineTransform old = g2d.getTransform();
+                    g2d.translate(bx, by);
+                    g2d.rotate(bAngle + Math.PI / 2);
+                    g2d.drawImage(bulletImage, -bw / 2, -bh / 2, null);
+                    g2d.setTransform(old);
+                } else {
+                    g2d.setColor(Color.YELLOW);
+                    g2d.fillOval((int) bx - 3, (int) by - 3, 6, 6);
+                }
             }
         }
 
-        // 4. Vẽ tất cả máy bay (Interpolation nhanh, dứt khoát)
+        // 3.5. Vẽ hiệu ứng nổ và sóng xung kích (Visual Explosion Effects)
+        long currentTime = System.currentTimeMillis();
+        for (VisualEffect eff : visualEffects) {
+            float progress = (currentTime - eff.startTime) / (float) eff.durationMs;
+            if (progress >= 1.0f) {
+                visualEffects.remove(eff);
+                continue;
+            }
+
+            float currentRadius = eff.maxRadius * (float) Math.sin(progress * Math.PI / 2);
+            int alpha = (int) (220 * (1.0f - progress));
+
+            // Vòng sóng xung kích phát sáng nở rộng
+            g2d.setColor(new Color(eff.color.getRed(), eff.color.getGreen(), eff.color.getBlue(), alpha));
+            g2d.setStroke(new BasicStroke(2.5f * (1.0f - progress * 0.5f)));
+            g2d.drawOval((int) (eff.x - currentRadius), (int) (eff.y - currentRadius), (int) (currentRadius * 2), (int) (currentRadius * 2));
+
+            // Quầng sáng tâm vụ nổ
+            int coreAlpha = (int) (alpha * 0.45f);
+            g2d.setColor(new Color(eff.color.getRed(), eff.color.getGreen(), eff.color.getBlue(), coreAlpha));
+            float coreR = currentRadius * 0.6f;
+            g2d.fillOval((int) (eff.x - coreR), (int) (eff.y - coreR), (int) (coreR * 2), (int) (coreR * 2));
+
+            // 6 tia plasma phân tán ra xung quanh
+            for (int s = 0; s < 6; s++) {
+                double sparkAngle = s * (Math.PI / 3) + progress * 0.8;
+                float sparkDist = currentRadius * 1.15f;
+                float spX = eff.x + (float) Math.cos(sparkAngle) * sparkDist;
+                float spY = eff.y + (float) Math.sin(sparkAngle) * sparkDist;
+                g2d.setColor(new Color(220, 255, 230, alpha));
+                g2d.fillOval((int) spX - 2, (int) spY - 2, 4, 4);
+            }
+        }
+
+        // 4. Vẽ tất cả máy bay (Interpolation)
         float lerpSpeed = 25.0f;
         for (int i = 0; i < state.playerCount; i++) {
             byte pid = state.playerIds[i];
@@ -330,8 +772,18 @@ public class GamePanel extends JPanel {
             float targetAngle = state.playerAngles[i];
             byte hp = state.playerHPs[i];
             byte score = state.playerScores[i];
+            byte sType = (i < state.playerShieldTypes.length) ? state.playerShieldTypes[i] : 0;
+            byte sHits = (i < state.playerShieldHits.length) ? state.playerShieldHits[i] : 0;
+            byte wBuff = (i < state.playerWeaponBuffs.length) ? state.playerWeaponBuffs[i] : 0;
 
             if (pid == myPlayerId) {
+                if (sHits > lastMyShieldHits) {
+                    playSound("sfx_shieldUp.wav");
+                } else if (sHits < lastMyShieldHits) {
+                    playSound("sfx_shieldDown.wav");
+                }
+                lastMyShieldHits = sHits;
+
                 if (hp < lastHp) {
                     if (hp == 0) playSound("explosion.wav");
                     else playSound("hit.wav");
@@ -373,6 +825,130 @@ public class GamePanel extends JPanel {
             }
             g2d.setTransform(old);
 
+            // 4.0. Hiệu ứng nòng súng khi có Buff
+            if (wBuff == 1) { // Pill Red: 3 nòng phát sáng đỏ
+                AffineTransform oldXf = g2d.getTransform();
+                g2d.translate(rp.x, rp.y);
+                g2d.rotate(rp.angle + Math.PI / 2);
+                g2d.setColor(new Color(255, 60, 60, 210));
+                g2d.fillOval(-18, -14, 5, 5); // Nòng trái
+                g2d.fillOval(13, -14, 5, 5);  // Nòng phải
+                g2d.fillOval(-3, -24, 6, 6);   // Nòng chính giữa
+                g2d.setTransform(oldXf);
+            } else if (wBuff == 2) { // Pill Green: Nạp quả cầu plasma xanh lá ở mũi tàu
+                AffineTransform oldXf = g2d.getTransform();
+                g2d.translate(rp.x, rp.y);
+                g2d.rotate(rp.angle + Math.PI / 2);
+                g2d.setColor(new Color(60, 255, 100, 220));
+                g2d.fillOval(-4, -26, 8, 8);
+                g2d.setColor(new Color(180, 255, 200, 240));
+                g2d.fillOval(-2, -24, 4, 4);
+                g2d.setTransform(oldXf);
+            } else if (wBuff == 3) { // Pill Blue: Vòng laser 4 quả cầu xanh xoay tròn quanh phi thuyền bảo vệ
+                float orbitRadius = 45.0f;
+                float baseOrbitAngle = (System.currentTimeMillis() % 100000) * 0.0035f;
+
+                // A. Hào quang laser nền bán trong suốt quanh phi thuyền
+                g2d.setColor(new Color(60, 160, 255, 30));
+                g2d.fillOval((int) (rp.x - orbitRadius - 5), (int) (rp.y - orbitRadius - 5), (int) ((orbitRadius + 5) * 2), (int) ((orbitRadius + 5) * 2));
+
+                // B. Vòng quỹ đạo lực trường công nghệ đứt đoạn xoay tròn
+                AffineTransform oldRingXf = g2d.getTransform();
+                g2d.translate(rp.x, rp.y);
+                g2d.rotate(baseOrbitAngle * 0.5f);
+                g2d.setColor(new Color(100, 200, 255, 150));
+                g2d.setStroke(new BasicStroke(1.8f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 0, new float[]{8, 8}, 0));
+                g2d.drawOval((int) -orbitRadius, (int) -orbitRadius, (int) (orbitRadius * 2), (int) (orbitRadius * 2));
+                g2d.setTransform(oldRingXf);
+
+                // C. Tính tọa độ 4 quả cầu xanh trên quỹ đạo
+                float[] orbXs = new float[4];
+                float[] orbYs = new float[4];
+                for (int k = 0; k < 4; k++) {
+                    float orbAngle = baseOrbitAngle + (float) (k * Math.PI / 2);
+                    orbXs[k] = rp.x + (float) Math.cos(orbAngle) * orbitRadius;
+                    orbYs[k] = rp.y + (float) Math.sin(orbAngle) * orbitRadius;
+                }
+
+                // D. Tia liên kết năng lượng laser hình kim cương nối 4 quả cầu
+                g2d.setColor(new Color(120, 210, 255, 80));
+                g2d.setStroke(new BasicStroke(1.2f));
+                for (int k = 0; k < 4; k++) {
+                    int nextK = (k + 1) % 4;
+                    g2d.drawLine((int) orbXs[k], (int) orbYs[k], (int) orbXs[nextK], (int) orbYs[nextK]);
+                }
+
+                // E. Vẽ 4 quả cầu laser xanh (laserBlue08.png) xoay đều quanh tàu
+                int sphereSize = 24;
+                for (int k = 0; k < 4; k++) {
+                    float ox = orbXs[k];
+                    float oy = orbYs[k];
+
+                    // Vầng sáng tỏa ra từ mỗi quả cầu
+                    g2d.setColor(new Color(80, 180, 255, 75));
+                    g2d.fillOval((int) ox - 14, (int) oy - 14, 28, 28);
+
+                    if (laserBlueSphereImage != null) {
+                        AffineTransform oldOrbXf = g2d.getTransform();
+                        g2d.translate(ox, oy);
+                        float orbSpin = baseOrbitAngle * 3.0f + k * (float) Math.PI;
+                        g2d.rotate(orbSpin);
+                        g2d.drawImage(laserBlueSphereImage, -sphereSize / 2, -sphereSize / 2, sphereSize, sphereSize, null);
+                        g2d.setTransform(oldOrbXf);
+                    } else {
+                        g2d.setColor(new Color(80, 200, 255));
+                        g2d.fillOval((int) ox - 8, (int) oy - 8, 16, 16);
+                    }
+                }
+
+                // F. Điểm lõi năng lượng phòng thủ tại mũi tàu
+                AffineTransform oldCoreXf = g2d.getTransform();
+                g2d.translate(rp.x, rp.y);
+                g2d.rotate(rp.angle + Math.PI / 2);
+                g2d.setColor(new Color(60, 180, 255, 220));
+                g2d.fillOval(-4, -20, 8, 8);
+                g2d.setColor(new Color(220, 245, 255, 240));
+                g2d.fillOval(-2, -18, 4, 4);
+                g2d.setTransform(oldCoreXf);
+            }
+
+            // 4.1. Vẽ Hào quang Khiên bảo vệ (Aura Shield) bao quanh tàu nếu có khiên
+            if (sHits > 0) {
+                float pulse = (float) Math.sin(System.currentTimeMillis() * 0.008f) * 2.5f;
+                float auraR = 28.0f + pulse;
+                Color auraBase;
+                Color auraBorder;
+                if (sType == 3) { // Vàng (3 lượt đỡ)
+                    auraBase = new Color(255, 215, 0, 45);
+                    auraBorder = new Color(255, 225, 70, 210);
+                } else if (sType == 2) { // Bạc (2 lượt đỡ)
+                    auraBase = new Color(160, 220, 255, 45);
+                    auraBorder = new Color(200, 240, 255, 210);
+                } else { // Đồng (1 lượt đỡ)
+                    auraBase = new Color(205, 127, 50, 45);
+                    auraBorder = new Color(245, 165, 85, 210);
+                }
+
+                // Lớp màng năng lượng hình cầu bán trong suốt
+                g2d.setColor(auraBase);
+                g2d.fillOval((int) (rp.x - auraR), (int) (rp.y - auraR), (int) (auraR * 2), (int) (auraR * 2));
+
+                // Viền khiên phát sáng
+                g2d.setColor(auraBorder);
+                g2d.setStroke(new BasicStroke(2.0f));
+                g2d.drawOval((int) (rp.x - auraR), (int) (rp.y - auraR), (int) (auraR * 2), (int) (auraR * 2));
+
+                // Vòng xoay công nghệ lực trường đứt đoạn (Energy Shield Ring)
+                float ringAngle = (System.currentTimeMillis() % 4000) * 0.09f;
+                AffineTransform oldXf = g2d.getTransform();
+                g2d.translate(rp.x, rp.y);
+                g2d.rotate(Math.toRadians(ringAngle));
+                g2d.setColor(new Color(auraBorder.getRed(), auraBorder.getGreen(), auraBorder.getBlue(), 130));
+                g2d.setStroke(new BasicStroke(1.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 0, new float[]{10, 8}, 0));
+                g2d.drawOval((int) -(auraR + 3), (int) -(auraR + 3), (int) ((auraR + 3) * 2), (int) ((auraR + 3) * 2));
+                g2d.setTransform(oldXf);
+            }
+
             // Vẽ thanh máu (HP Bar)
             int barW = 40;
             int barH = 5;
@@ -387,11 +963,306 @@ public class GamePanel extends JPanel {
             g2d.setColor(Color.BLACK);
             g2d.drawRect(barX, barY, barW, barH);
 
-            // Tên + Điểm
+            // Tên + Điểm + Khiên + Buff
             g2d.setColor(Color.WHITE);
             g2d.setFont(new Font("Arial", Font.BOLD, 11));
-            String info = (pid == myPlayerId ? "[YOU] " : "") + "P" + pid + " (" + score + " pts)";
-            g2d.drawString(info, barX - 5, barY - 3);
+            String pName = playerNames.getOrDefault(pid, "Player #" + pid);
+            String shieldText = (sHits > 0 ? " 🛡️x" + sHits : "");
+            String buffText = "";
+            byte remBuff = (i < state.playerBuffRemainingSeconds.length) ? state.playerBuffRemainingSeconds[i] : 0;
+            String remBuffStr = (remBuff > 0) ? " " + remBuff + "s" : "";
+            if (wBuff == 1) buffText = " 🔥[3-WAY" + remBuffStr + "]";
+            else if (wBuff == 2) buffText = " 💥[CLUSTER" + remBuffStr + "]";
+            else if (wBuff == 3) buffText = " ⚡[ORBIT" + remBuffStr + "]";
+            String info = (pid == myPlayerId ? "[YOU] " : "") + pName + " (" + score + " kills)" + shieldText + buffText;
+            g2d.drawString(info, barX - 10, barY - 3);
+
+            // Icon thuốc mini bên cạnh thanh máu nếu có buff
+            if (wBuff >= 1 && wBuff <= 3 && pillImages[wBuff] != null) {
+                g2d.drawImage(pillImages[wBuff], barX + barW + 5, barY - 5, 14, 13, null);
+            }
+
+            // Vẽ các nấc khiên (Shield Pips) phía trên thanh máu
+            if (sHits > 0) {
+                Color pipColor = (sType == 3) ? new Color(255, 215, 0) : (sType == 2 ? new Color(180, 230, 255) : new Color(225, 145, 75));
+                int pipW = 8;
+                int pipH = 3;
+                int pipGap = 3;
+                int totalPipW = sHits * pipW + (sHits - 1) * pipGap;
+                int pipX = (int) rp.x - totalPipW / 2;
+                int pipY = barY - 7;
+                for (int pIdx = 0; pIdx < sHits; pIdx++) {
+                    g2d.setColor(pipColor);
+                    g2d.fillRect(pipX + pIdx * (pipW + pipGap), pipY, pipW, pipH);
+                    g2d.setColor(Color.WHITE);
+                    g2d.drawRect(pipX + pIdx * (pipW + pipGap), pipY, pipW, pipH);
+                }
+            }
+        }
+
+        // 5. Đồng hồ đếm ngược trận đấu 60 giây (HUD Timer ở giữa trên cùng)
+        int remSec = Math.max(0, (int) state.remainingSeconds);
+        int minutes = remSec / 60;
+        int seconds = remSec % 60;
+        String timeStr = String.format("%02d:%02d", minutes, seconds);
+
+        int timerW = 120;
+        int timerH = 34;
+        int timerX = (getWidth() - timerW) / 2;
+        int timerY = 12;
+
+        g2d.setColor(new Color(15, 20, 35, 210));
+        g2d.fillRoundRect(timerX, timerY, timerW, timerH, 10, 10);
+
+        if (remSec <= 10 && remSec > 0) {
+            g2d.setColor(new Color(255, 60, 60));
+        } else {
+            g2d.setColor(new Color(70, 130, 220));
+        }
+        g2d.setStroke(new BasicStroke(2.0f));
+        g2d.drawRoundRect(timerX, timerY, timerW, timerH, 10, 10);
+
+        g2d.setFont(new Font("Consolas", Font.BOLD, 18));
+        g2d.setColor(remSec <= 10 && remSec > 0 ? new Color(255, 90, 90) : Color.WHITE);
+        FontMetrics fmTime = g2d.getFontMetrics();
+        int tx = timerX + (timerW - fmTime.stringWidth("⏱ " + timeStr)) / 2;
+        int ty = timerY + ((timerH - fmTime.getHeight()) / 2) + fmTime.getAscent();
+        g2d.drawString("⏱ " + timeStr, tx, ty);
+
+        // 5.5. Bảng thông báo Buff vũ khí góc dưới bên trái (Weapon Buff Status HUD)
+        if (curMyBuff >= 1 && curMyBuff <= 3) {
+            int hudX = 20;
+            int hudY = getHeight() - 76;
+            int hudW = 240;
+            int hudH = 56;
+
+            Color themeCol;
+            String titleText;
+            String descText;
+            if (curMyBuff == 1) {
+                themeCol = new Color(255, 75, 75);
+                titleText = "3-WAY SPREAD SHOT";
+                descText = "3 luồng đạn plasma đỏ cực mạnh";
+            } else if (curMyBuff == 2) {
+                themeCol = new Color(50, 230, 90);
+                titleText = "CLUSTER FRAG BOMB";
+                descText = "Click từng nhịp • Nổ 4 đạn phân mảnh";
+            } else {
+                themeCol = new Color(40, 180, 255);
+                titleText = "ORBITAL LASER BARRIER";
+                descText = "Chắn đạn bảo vệ • Thiêu đốt áp sát";
+            }
+
+            // Nền hộp kính mờ
+            g2d.setColor(new Color(15, 20, 35, 220));
+            g2d.fillRoundRect(hudX, hudY, hudW, hudH, 12, 12);
+
+            // Viền phát sáng theo màu buff
+            g2d.setColor(themeCol);
+            g2d.setStroke(new BasicStroke(1.8f));
+            g2d.drawRoundRect(hudX, hudY, hudW, hudH, 12, 12);
+
+            // Icon thuốc
+            if (pillImages[curMyBuff] != null) {
+                g2d.drawImage(pillImages[curMyBuff], hudX + 10, hudY + 12, 30, 28, null);
+            }
+
+            // Tên Buff
+            g2d.setFont(new Font("Arial", Font.BOLD, 12));
+            g2d.setColor(themeCol);
+            g2d.drawString(titleText, hudX + 48, hudY + 22);
+
+            // Mô tả
+            g2d.setFont(new Font("Arial", Font.PLAIN, 10));
+            g2d.setColor(new Color(190, 205, 225));
+            g2d.drawString(descText, hudX + 48, hudY + 36);
+
+            // Thanh tiến trình đếm ngược thời gian buff (15 giây)
+            int barWidth = 145;
+            int barHeight = 4;
+            int barProgX = hudX + 48;
+            int barProgY = hudY + 43;
+            float timeRatio = Math.max(0.0f, Math.min(1.0f, myBuffRemainingSec / 15.0f));
+
+            g2d.setColor(new Color(40, 45, 60));
+            g2d.fillRect(barProgX, barProgY, barWidth, barHeight);
+            g2d.setColor(themeCol);
+            g2d.fillRect(barProgX, barProgY, (int) (barWidth * timeRatio), barHeight);
+
+            // Số giây còn lại
+            g2d.setFont(new Font("Consolas", Font.BOLD, 12));
+            g2d.setColor(Color.WHITE);
+            g2d.drawString(myBuffRemainingSec + "s", hudX + hudW - 32, hudY + 48);
+        }
+
+        // 6. Màn hình BẢNG XẾP HẠNG TỔNG KẾT & NÚT CHƠI LẠI (Khi hết giờ - remSec == 0)
+        if (state.remainingSeconds <= 0) {
+            if (!hasPlayedGameOverSound) {
+                hasPlayedGameOverSound = true;
+                playSound("explosion.wav");
+            }
+
+            // Phủ mờ toàn màn hình
+            g2d.setColor(new Color(5, 10, 20, 225));
+            g2d.fillRect(0, 0, getWidth(), getHeight());
+
+            // Khung Bảng xếp hạng chính giữa
+            int boardW = 480;
+            int boardH = 380;
+            int boardX = (getWidth() - boardW) / 2;
+            int boardY = (getHeight() - boardH) / 2;
+
+            g2d.setColor(new Color(20, 25, 45, 250));
+            g2d.fillRoundRect(boardX, boardY, boardW, boardH, 20, 20);
+            g2d.setColor(new Color(255, 215, 0)); // Viền vàng kim
+            g2d.setStroke(new BasicStroke(2.5f));
+            g2d.drawRoundRect(boardX, boardY, boardW, boardH, 20, 20);
+
+            // Tiêu đề
+            g2d.setFont(new Font("Arial", Font.BOLD, 22));
+            g2d.setColor(new Color(255, 215, 0));
+            String title = "🏆 MATCH OVER - LEADERBOARD 🏆";
+            FontMetrics fmTitle = g2d.getFontMetrics();
+            g2d.drawString(title, boardX + (boardW - fmTitle.stringWidth(title)) / 2, boardY + 42);
+
+            g2d.setFont(new Font("Arial", Font.PLAIN, 13));
+            g2d.setColor(new Color(180, 190, 210));
+            String sub = "Tổng kết xếp hạng số mạng tiêu diệt sau 60 giây";
+            FontMetrics fmSub = g2d.getFontMetrics();
+            g2d.drawString(sub, boardX + (boardW - fmSub.stringWidth(sub)) / 2, boardY + 66);
+
+            g2d.setColor(new Color(60, 75, 110));
+            g2d.drawLine(boardX + 30, boardY + 80, boardX + boardW - 30, boardY + 80);
+
+            // Xếp hạng danh sách theo Score giảm dần
+            class PlayerRank {
+                byte id;
+                byte score;
+                PlayerRank(byte id, byte score) { this.id = id; this.score = score; }
+            }
+            List<PlayerRank> ranks = new ArrayList<>();
+            for (int i = 0; i < state.playerCount; i++) {
+                ranks.add(new PlayerRank(state.playerIds[i], state.playerScores[i]));
+            }
+            ranks.sort((a, b) -> Integer.compare(b.score, a.score));
+
+            int rowY = boardY + 108;
+            for (int r = 0; r < ranks.size(); r++) {
+                PlayerRank pr = ranks.get(r);
+                boolean isMe = (pr.id == myPlayerId);
+                boolean isWinner = (r == 0 && pr.score > 0);
+
+                if (r == 0) {
+                    g2d.setColor(new Color(255, 215, 0, 45)); // Hạng 1 ánh vàng
+                } else if (isMe) {
+                    g2d.setColor(new Color(0, 255, 128, 30)); // Của bản thân ánh xanh
+                } else {
+                    g2d.setColor(new Color(255, 255, 255, 15));
+                }
+                g2d.fillRoundRect(boardX + 30, rowY - 18, boardW - 60, 36, 10, 10);
+
+                // Huy hiệu Hạng
+                String rankBadge;
+                Color rankColor;
+                if (r == 0) {
+                    rankBadge = "🥇 1st";
+                    rankColor = new Color(255, 215, 0);
+                } else if (r == 1) {
+                    rankBadge = "🥈 2nd";
+                    rankColor = new Color(210, 210, 210);
+                } else if (r == 2) {
+                    rankBadge = "🥉 3rd";
+                    rankColor = new Color(205, 127, 50);
+                } else {
+                    rankBadge = "   " + (r + 1) + "th";
+                    rankColor = Color.LIGHT_GRAY;
+                }
+
+                g2d.setFont(new Font("Arial", Font.BOLD, 15));
+                g2d.setColor(rankColor);
+                g2d.drawString(rankBadge, boardX + 45, rowY + 6);
+
+                // Tên người chơi
+                String name = playerNames.getOrDefault(pr.id, "Player #" + pr.id);
+                if (isMe) name += " (YOU)";
+                g2d.setFont(new Font("Arial", Font.BOLD, 14));
+                g2d.setColor(isMe ? new Color(100, 255, 150) : Color.WHITE);
+                g2d.drawString(name, boardX + 130, rowY + 6);
+
+                // Số mạng tiêu diệt (Kills)
+                String killText = pr.score + " Kills";
+                if (isWinner) killText += " 👑 WINNER";
+                g2d.setFont(new Font("Arial", Font.BOLD, 14));
+                g2d.setColor(isWinner ? new Color(255, 215, 0) : new Color(220, 220, 220));
+                g2d.drawString(killText, boardX + 300, rowY + 6);
+
+                rowY += 44;
+            }
+
+            // 7. Nút Rematch / Chơi lại và Nút Về sảnh ở đáy bảng xếp hạng
+            int btnH = 42;
+            int btnY = boardY + boardH - 58;
+            int btnRematchW = 250;
+            int btnLobbyW = 140;
+            int gap = 14;
+            int totalW = btnRematchW + gap + btnLobbyW;
+            int btnRematchX = boardX + (boardW - totalW) / 2;
+            int btnLobbyX = btnRematchX + btnRematchW + gap;
+
+            // NÚT 1: CHƠI LẠI (REMATCH)
+            if (rematchCountdown > 0) {
+                // Đang đếm ngược vào trận mới
+                g2d.setColor(new Color(255, 180, 0, 230));
+                g2d.fillRoundRect(btnRematchX, btnY, btnRematchW, btnH, 12, 12);
+                g2d.setColor(Color.WHITE);
+                g2d.setStroke(new BasicStroke(2.0f));
+                g2d.drawRoundRect(btnRematchX, btnY, btnRematchW, btnH, 12, 12);
+
+                g2d.setFont(new Font("Arial", Font.BOLD, 14));
+                g2d.setColor(Color.BLACK);
+                String cdText = "🚀 TRẬN MỚI TRONG " + rematchCountdown + "s...";
+                FontMetrics fmBtn = g2d.getFontMetrics();
+                g2d.drawString(cdText, btnRematchX + (btnRematchW - fmBtn.stringWidth(cdText)) / 2, btnY + 26);
+            } else if (isRematchReady) {
+                // Bản thân đã sẵn sàng, chờ đối thủ
+                g2d.setColor(new Color(40, 160, 80, 230));
+                g2d.fillRoundRect(btnRematchX, btnY, btnRematchW, btnH, 12, 12);
+                g2d.setColor(new Color(120, 255, 160));
+                g2d.setStroke(new BasicStroke(2.0f));
+                g2d.drawRoundRect(btnRematchX, btnY, btnRematchW, btnH, 12, 12);
+
+                g2d.setFont(new Font("Arial", Font.BOLD, 13));
+                g2d.setColor(Color.WHITE);
+                String readyText = "✅ ĐÃ SẴN SÀNG! ĐỢI ĐỐI THỦ...";
+                FontMetrics fmBtn = g2d.getFontMetrics();
+                g2d.drawString(readyText, btnRematchX + (btnRematchW - fmBtn.stringWidth(readyText)) / 2, btnY + 26);
+            } else {
+                // Nút bấm Sẵn sàng chơi lại
+                g2d.setColor(new Color(220, 50, 50, 230));
+                g2d.fillRoundRect(btnRematchX, btnY, btnRematchW, btnH, 12, 12);
+                g2d.setColor(new Color(255, 200, 200));
+                g2d.setStroke(new BasicStroke(2.0f));
+                g2d.drawRoundRect(btnRematchX, btnY, btnRematchW, btnH, 12, 12);
+
+                g2d.setFont(new Font("Arial", Font.BOLD, 13));
+                g2d.setColor(Color.WHITE);
+                String replayText = "⚔️ CHƠI LẠI HOẶC [R]";
+                FontMetrics fmBtn = g2d.getFontMetrics();
+                g2d.drawString(replayText, btnRematchX + (btnRematchW - fmBtn.stringWidth(replayText)) / 2, btnY + 26);
+            }
+
+            // NÚT 2: VỀ SẢNH CHỜ
+            g2d.setColor(new Color(45, 60, 90, 230));
+            g2d.fillRoundRect(btnLobbyX, btnY, btnLobbyW, btnH, 12, 12);
+            g2d.setColor(new Color(140, 180, 240));
+            g2d.setStroke(new BasicStroke(2.0f));
+            g2d.drawRoundRect(btnLobbyX, btnY, btnLobbyW, btnH, 12, 12);
+
+            g2d.setFont(new Font("Arial", Font.BOLD, 13));
+            g2d.setColor(Color.WHITE);
+            String lobbyText = "🚪 VỀ SẢNH";
+            FontMetrics fmLobby = g2d.getFontMetrics();
+            g2d.drawString(lobbyText, btnLobbyX + (btnLobbyW - fmLobby.stringWidth(lobbyText)) / 2, btnY + 26);
         }
     }
 }
