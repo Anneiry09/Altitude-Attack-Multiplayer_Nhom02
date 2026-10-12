@@ -19,9 +19,9 @@ public class RoomInfo {
 
     public String getStatusDisplay() {
         return switch (status) {
-            case "COUNTDOWN" -> "⏳ Đếm ngược";
-            case "PLAYING" -> "⚔️ Đang đấu";
-            default -> "🟢 Đang chờ";
+            case "COUNTDOWN" -> "● Đếm ngược";
+            case "PLAYING" -> "● Đang đấu";
+            default -> "● Đang chờ";
         };
     }
 }

@@ -967,13 +967,13 @@ public class GamePanel extends JPanel {
             g2d.setColor(Color.WHITE);
             g2d.setFont(new Font("Arial", Font.BOLD, 11));
             String pName = playerNames.getOrDefault(pid, "Player #" + pid);
-            String shieldText = (sHits > 0 ? " 🛡️x" + sHits : "");
+            String shieldText = (sHits > 0 ? " [SHIELDx" + sHits + "]" : "");
             String buffText = "";
             byte remBuff = (i < state.playerBuffRemainingSeconds.length) ? state.playerBuffRemainingSeconds[i] : 0;
             String remBuffStr = (remBuff > 0) ? " " + remBuff + "s" : "";
-            if (wBuff == 1) buffText = " 🔥[3-WAY" + remBuffStr + "]";
-            else if (wBuff == 2) buffText = " 💥[CLUSTER" + remBuffStr + "]";
-            else if (wBuff == 3) buffText = " ⚡[ORBIT" + remBuffStr + "]";
+            if (wBuff == 1) buffText = " [3-WAY" + remBuffStr + "]";
+            else if (wBuff == 2) buffText = " [CLUSTER" + remBuffStr + "]";
+            else if (wBuff == 3) buffText = " [ORBIT" + remBuffStr + "]";
             String info = (pid == myPlayerId ? "[YOU] " : "") + pName + " (" + score + " kills)" + shieldText + buffText;
             g2d.drawString(info, barX - 10, barY - 3);
 
@@ -1025,9 +1025,9 @@ public class GamePanel extends JPanel {
         g2d.setFont(new Font("Consolas", Font.BOLD, 18));
         g2d.setColor(remSec <= 10 && remSec > 0 ? new Color(255, 90, 90) : Color.WHITE);
         FontMetrics fmTime = g2d.getFontMetrics();
-        int tx = timerX + (timerW - fmTime.stringWidth("⏱ " + timeStr)) / 2;
+        int tx = timerX + (timerW - fmTime.stringWidth(timeStr)) / 2;
         int ty = timerY + ((timerH - fmTime.getHeight()) / 2) + fmTime.getAscent();
-        g2d.drawString("⏱ " + timeStr, tx, ty);
+        g2d.drawString(timeStr, tx, ty);
 
         // 5.5. Bảng thông báo Buff vũ khí góc dưới bên trái (Weapon Buff Status HUD)
         if (curMyBuff >= 1 && curMyBuff <= 3) {

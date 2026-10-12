@@ -59,6 +59,10 @@ public class Room {
             cancelCountdown();
         }
 
+        if (engine != null) {
+            engine.removePlayer(client.getPlayerId());
+        }
+
         if (members.isEmpty()) {
             if (engine != null) engine.stop();
             tcpServer.getRoomManager().removeRoom(id);

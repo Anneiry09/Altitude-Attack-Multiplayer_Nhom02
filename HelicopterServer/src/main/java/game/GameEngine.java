@@ -666,6 +666,11 @@ public class GameEngine implements Runnable {
         System.out.println("[GameEngine] Match reset! Ready for fresh 60s match with scheduled shield & pill drops.");
     }
 
+    public void removePlayer(byte playerId) {
+        players.remove(playerId);
+        System.out.println("[GameEngine] Player #" + playerId + " removed from engine.");
+    }
+
     public boolean isRunning() {
         return isRunning;
     }
