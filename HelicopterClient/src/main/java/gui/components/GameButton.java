@@ -76,7 +76,7 @@ public class GameButton extends JButton {
                 if (isEnabled()) {
                     isPressed = true;
                     if (soundEnabled) {
-                        if (style == Style.RED || style == Style.CORAL) {
+                        if (style == Style.RED) {
                             SoundManager.getInstance().playCancel();
                         } else {
                             SoundManager.getInstance().playClick();

@@ -250,6 +250,10 @@ public class TCPClient {
         sendRaw("INVITE_RESPONSE:" + roomId + "," + (accept ? "ACCEPT" : "DECLINE"));
     }
 
+    public void sendRename(String newName) {
+        sendRaw("RENAME:" + newName);
+    }
+
     private final Object writeLock = new Object();
 
     private void sendRaw(String msg) {

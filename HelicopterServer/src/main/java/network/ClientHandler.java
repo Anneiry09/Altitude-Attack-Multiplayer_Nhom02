@@ -49,6 +49,15 @@ public class ClientHandler extends Thread {
                     server.joinMatchmaking(this);
                 } else if ("MATCHMAKING_CANCEL".equals(message)) {
                     server.cancelMatchmaking(this);
+                } else if (message.startsWith("RENAME:")) {
+                    String newName = message.substring("RENAME:".length()).trim();
+                    if (!newName.isEmpty()) {
+                        this.playerName = newName;
+                        if (currentRoom != null) {
+                            currentRoom.broadcastRoomData();
+                        }
+                        server.broadcastLobbyData();
+                    }
                 } else if (message.startsWith("CREATE_ROOM")) {
                     String roomName = "";
                     if (message.contains(":")) {

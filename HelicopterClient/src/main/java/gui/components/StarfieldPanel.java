@@ -55,6 +55,7 @@ public class StarfieldPanel extends JPanel {
     // Tiêu đề hiển thị
     private String titleText = "ALTITUDE ATTACK";
     private String subtitleText = "SPACE HELICOPTER MULTIPLAYER ARENA • GIAO THỨC UDP/TCP";
+    private boolean showTitleBanner = true;
 
     public StarfieldPanel() {
         this(null);
@@ -284,6 +285,11 @@ public class StarfieldPanel extends JPanel {
         repaint();
     }
 
+    public void setShowTitleBanner(boolean show) {
+        this.showTitleBanner = show;
+        repaint();
+    }
+
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -343,8 +349,10 @@ public class StarfieldPanel extends JPanel {
             }
         }
 
-        // 4. VẼ KHUNG TIÊU ĐỀ STARLIGHT SCI-FI ĐẲNG CẤP Ở ĐỈNH MÀN HÌNH
-        drawStarlightTitleBanner(g2, w);
+        // 4. VẼ KHUNG TIÊU ĐỀ STARLIGHT SCI-FI ĐẲNG CẤP Ở ĐỈNH MÀN HÌNH (NẾU ĐƯỢC BẬT)
+        if (showTitleBanner) {
+            drawStarlightTitleBanner(g2, w);
+        }
 
         g2.dispose();
     }

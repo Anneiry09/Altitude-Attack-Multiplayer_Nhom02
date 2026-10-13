@@ -5,6 +5,7 @@ import game.GamePanel;
 import gui.components.GameButton;
 import gui.components.GameCardPanel;
 import gui.components.GameScrollBarUI;
+import gui.components.GameSliderUI;
 import gui.components.GameTextField;
 import gui.components.StarfieldPanel;
 import model.OnlinePlayer;
@@ -20,6 +21,7 @@ import javax.swing.border.LineBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.HashMap;
@@ -46,6 +48,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
     private JLabel lblConnectStatus;
 
     // View 2: Dashboard (Sảnh chính & Phòng)
+    private StarfieldPanel dashboardView;
     private CardLayout contentCardLayout;
     private JPanel contentPanel;
     private JLabel lblPlayerProfile;
@@ -128,7 +131,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
 
         // Khởi tạo các View chính
         loginView = createLoginView();
-        JPanel dashboardView = createDashboardView();
+        dashboardView = createDashboardView();
         gameContainer = new JPanel(new BorderLayout());
 
         rootPanel.add(loginView, "LOGIN");
@@ -229,6 +232,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
                     myPlayerName = name;
                     lblPlayerProfile.setText("● Phi công: " + name + " (ID: #" + tcpClient.getMyPlayerId() + ")");
                     if (loginView != null) loginView.stopAnimation();
+                    if (dashboardView != null) dashboardView.startAnimation();
                     rootCardLayout.show(rootPanel, "DASHBOARD");
                     showLobbyView();
                 } else {
@@ -244,22 +248,34 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
     // ==========================================
     // 2. DASHBOARD CHÍNH (HEADER + SẢNH / PHÒNG)
     // ==========================================
-    private JPanel createDashboardView() {
-        JPanel dashboard = new JPanel(new BorderLayout());
-        dashboard.setBackground(new Color(11, 15, 26));
+    private StarfieldPanel createDashboardView() {
+        StarfieldPanel dashboard = new StarfieldPanel(new BorderLayout());
+        dashboard.setShowTitleBanner(false); // Sảnh chờ dùng StarfieldPanel làm nền vũ trụ động với sao rơi
 
         // Top Navigation Header
-        JPanel header = new JPanel(new BorderLayout());
-        header.setBackground(new Color(16, 22, 38));
-        header.setBorder(new EmptyBorder(10, 18, 10, 18));
+        JPanel header = new JPanel(new BorderLayout()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g.create();
+                // Đường viền neon ngăn cách mỏng bên dưới
+                g2.setColor(new Color(40, 60, 95, 180));
+                g2.drawLine(0, getHeight() - 1, getWidth(), getHeight() - 1);
+                g2.setColor(new Color(255, 140, 50, 120));
+                g2.drawLine(getWidth() / 4, getHeight() - 1, getWidth() * 3 / 4, getHeight() - 1);
+                g2.dispose();
+            }
+        };
+        header.setBackground(new Color(10, 14, 25, 205)); // Màu đục mờ thấy sao rơi phía sau
+        header.setBorder(new EmptyBorder(10, 20, 10, 20));
 
         // Profile bên trái
         JPanel profilePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         profilePanel.setOpaque(false);
 
-        lblPlayerProfile = new JLabel("● Phi công: ");
-        lblPlayerProfile.setFont(new Font("Arial", Font.BOLD, 14));
-        lblPlayerProfile.setForeground(new Color(100, 255, 160));
+        lblPlayerProfile = new JLabel("● PHI CÔNG: ");
+        lblPlayerProfile.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        lblPlayerProfile.setForeground(new Color(80, 245, 160));
         profilePanel.add(lblPlayerProfile);
         header.add(profilePanel, BorderLayout.WEST);
 
@@ -267,28 +283,18 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         JPanel headerRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         headerRight.setOpaque(false);
 
-        // Nút Bật/Tắt Nhạc nền
-        btnAudioToggle = new GameButton("♫ NHẠC: BẬT", GameButton.Style.DARK);
-        btnAudioToggle.setFont(new Font("Arial", Font.BOLD, 12));
-        btnAudioToggle.setPreferredSize(new Dimension(135, 34));
-        btnAudioToggle.addActionListener(e -> {
-            SoundManager.getInstance().toggleBgmMute();
-            boolean muted = SoundManager.getInstance().isBgmMuted();
-            btnAudioToggle.setText(muted ? "♫ NHẠC: TẮT" : "♫ NHẠC: BẬT");
-        });
-        headerRight.add(btnAudioToggle);
+        // Nút Cài đặt (Bên trái nút Ghép trận nhanh)
+        GameButton btnSettings = new GameButton("⚙ CÀI ĐẶT", GameButton.Style.DARK);
+        btnSettings.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnSettings.setPreferredSize(new Dimension(115, 36));
+        btnSettings.addActionListener(e -> showSettingsDialog());
+        headerRight.add(btnSettings);
 
-        btnQuickMatch = new GameButton("⚡ GHÉP TRẬN NGẪU NHIÊN", GameButton.Style.GOLD);
-        btnQuickMatch.setFont(new Font("Arial", Font.BOLD, 13));
-        btnQuickMatch.setPreferredSize(new Dimension(215, 34));
+        btnQuickMatch = new GameButton("⚡ GHÉP TRẬN NHANH", GameButton.Style.CORAL);
+        btnQuickMatch.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnQuickMatch.setPreferredSize(new Dimension(210, 36));
         btnQuickMatch.addActionListener(e -> onQuickMatchClicked());
         headerRight.add(btnQuickMatch);
-
-        GameButton btnDisconnect = new GameButton("✕ Đăng xuất", GameButton.Style.DARK);
-        btnDisconnect.setFont(new Font("Arial", Font.PLAIN, 12));
-        btnDisconnect.setPreferredSize(new Dimension(105, 34));
-        btnDisconnect.addActionListener(e -> onDisconnectClicked());
-        headerRight.add(btnDisconnect);
 
         header.add(headerRight, BorderLayout.EAST);
         dashboard.add(header, BorderLayout.NORTH);
@@ -296,7 +302,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         // Content Area (Switch giữa Sảnh chính và Phòng)
         contentCardLayout = new CardLayout();
         contentPanel = new JPanel(contentCardLayout);
-        contentPanel.setBackground(new Color(11, 15, 26));
+        contentPanel.setOpaque(false);
 
         JPanel lobbyView = createLobbyContentView();
         JPanel roomView = createRoomContentView();
@@ -323,21 +329,235 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         this.isMatchmaking = searching;
         if (searching) {
             btnQuickMatch.setText("[!] ĐANG TÌM TRẬN... [HỦY]");
-            btnQuickMatch.setStyle(GameButton.Style.RED);
+            btnQuickMatch.setStyle(GameButton.Style.DARK);
         } else {
-            btnQuickMatch.setText("⚡ GHÉP TRẬN NGẪU NHIÊN");
-            btnQuickMatch.setStyle(GameButton.Style.GOLD);
+            btnQuickMatch.setText("⚡ GHÉP TRẬN NHANH");
+            btnQuickMatch.setStyle(GameButton.Style.CORAL);
         }
     }
 
     private void onDisconnectClicked() {
         tcpClient.disconnect();
+        if (dashboardView != null) dashboardView.stopAnimation();
         if (loginView != null) loginView.startAnimation();
         rootCardLayout.show(rootPanel, "LOGIN");
         btnConnect.setEnabled(true);
         lblConnectStatus.setText("Đã ngắt kết nối.");
         lblConnectStatus.setForeground(Color.GRAY);
         SoundManager.getInstance().playCancel();
+    }
+
+    // ==========================================
+    // CỬA SỔ CÀI ĐẶT (SETTINGS DIALOG CÓ HIỆU ỨNG TRƯỢT SANG TRÁI)
+    // ==========================================
+    private void showSettingsDialog() {
+        JDialog dialog = new JDialog(this, "Cài đặt hệ thống", true);
+        dialog.setUndecorated(true);
+        dialog.setSize(460, 360);
+        dialog.setLocationRelativeTo(this);
+
+        GameCardPanel rootCard = new GameCardPanel(new BorderLayout());
+        rootCard.setBackgroundColor(new Color(10, 14, 25, 250));
+        rootCard.setBorderColor(new Color(55, 75, 115));
+        rootCard.setAccentColor(new Color(255, 120, 50));
+        rootCard.setBorder(new EmptyBorder(16, 20, 16, 20));
+
+        // Header Dialog
+        JPanel headerPnl = new JPanel(new BorderLayout());
+        headerPnl.setOpaque(false);
+
+        JLabel lblTitle = new JLabel("⚙ CÀI ĐẶT HỆ THỐNG", SwingConstants.LEFT);
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        lblTitle.setForeground(new Color(255, 180, 80));
+        headerPnl.add(lblTitle, BorderLayout.WEST);
+
+        GameButton btnClose = new GameButton("✕", GameButton.Style.DARK);
+        btnClose.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnClose.setPreferredSize(new Dimension(36, 32));
+        btnClose.addActionListener(e -> dialog.dispose());
+        headerPnl.add(btnClose, BorderLayout.EAST);
+
+        rootCard.add(headerPnl, BorderLayout.NORTH);
+
+        // Slide Container: Chứa Menu chính và Trang con cài đặt nhạc
+        int viewportW = 420;
+        int viewportH = 265;
+        JPanel sliderViewport = new JPanel(null);
+        sliderViewport.setOpaque(false);
+        sliderViewport.setPreferredSize(new Dimension(viewportW, viewportH));
+
+        JPanel sliderTrack = new JPanel(null);
+        sliderTrack.setOpaque(false);
+        sliderTrack.setBounds(0, 0, viewportW * 2, viewportH);
+
+        // Panel 1: MENU CHÍNH
+        JPanel pnlMainMenu = new JPanel(new GridLayout(3, 1, 0, 12));
+        pnlMainMenu.setOpaque(false);
+        pnlMainMenu.setBounds(0, 10, viewportW, viewportH - 20);
+
+        // Mục 1: ÂM NHẠC & ÂM LƯỢNG
+        GameButton btnMusicMenu = new GameButton("♫ ÂM THANH & NHẠC NỀN ▶", GameButton.Style.CORAL);
+        btnMusicMenu.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnMusicMenu.setPreferredSize(new Dimension(0, 48));
+
+        // Mục 2: THÔNG TIN PHI CÔNG & ĐỔI TÊN
+        GameButton btnProfileMenu = new GameButton("👤 ĐỔI TÊN PHI CÔNG (" + myPlayerName + ")", GameButton.Style.DARK);
+        btnProfileMenu.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnProfileMenu.setPreferredSize(new Dimension(0, 48));
+        btnProfileMenu.addActionListener(e -> {
+            String newName = JOptionPane.showInputDialog(dialog, "Nhập tên phi công mới của bạn:", myPlayerName);
+            if (newName != null && !newName.trim().isEmpty() && !newName.trim().equals(myPlayerName)) {
+                String trimmed = newName.trim();
+                myPlayerName = trimmed;
+                tcpClient.sendRename(trimmed);
+                lblPlayerProfile.setText("● PHI CÔNG: " + trimmed + " (ID: #" + myPlayerId + ")");
+                btnProfileMenu.setText("👤 ĐỔI TÊN PHI CÔNG (" + trimmed + ")");
+                SoundManager.getInstance().playClick();
+            }
+        });
+
+        // Mục 3: ĐĂNG XUẤT
+        GameButton btnLogoutMenu = new GameButton("✕ ĐĂNG XUẤT KHỎI SERVER", GameButton.Style.RED);
+        btnLogoutMenu.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnLogoutMenu.setPreferredSize(new Dimension(0, 48));
+        btnLogoutMenu.addActionListener(e -> {
+            dialog.dispose();
+            onDisconnectClicked();
+        });
+
+        pnlMainMenu.add(btnMusicMenu);
+        pnlMainMenu.add(btnProfileMenu);
+        pnlMainMenu.add(btnLogoutMenu);
+        sliderTrack.add(pnlMainMenu);
+
+        // Panel 2: CÀI ĐẶT NHẠC CHI TIẾT
+        JPanel pnlMusicDetails = new JPanel(new BorderLayout(0, 10));
+        pnlMusicDetails.setOpaque(false);
+        pnlMusicDetails.setBounds(viewportW, 10, viewportW, viewportH - 20);
+
+        JPanel musicControlsBox = new JPanel(new GridLayout(4, 1, 0, 8));
+        musicControlsBox.setOpaque(false);
+
+        // Thanh kéo âm lượng
+        JPanel volRow = new JPanel(new BorderLayout(10, 0));
+        volRow.setOpaque(false);
+        JLabel lblVolTitle = new JLabel("Âm lượng:");
+        lblVolTitle.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblVolTitle.setForeground(new Color(220, 230, 245));
+        lblVolTitle.setPreferredSize(new Dimension(80, 26));
+        volRow.add(lblVolTitle, BorderLayout.WEST);
+
+        JSlider volSlider = new JSlider(0, 100, (int) (SoundManager.getInstance().getBgmVolume() * 100));
+        volSlider.setOpaque(false);
+        volSlider.setUI(new GameSliderUI(volSlider));
+        JLabel lblVolVal = new JLabel(volSlider.getValue() + "%", SwingConstants.RIGHT);
+        lblVolVal.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblVolVal.setForeground(new Color(255, 180, 80));
+        lblVolVal.setPreferredSize(new Dimension(45, 26));
+
+        volSlider.addChangeListener(ce -> {
+            int v = volSlider.getValue();
+            lblVolVal.setText(v + "%");
+            SoundManager.getInstance().setBgmVolume(v / 100.0f);
+        });
+        volRow.add(volSlider, BorderLayout.CENTER);
+        volRow.add(lblVolVal, BorderLayout.EAST);
+        musicControlsBox.add(volRow);
+
+        // Nút Bật/Tắt tiếng nhanh
+        GameButton btnMuteToggle = new GameButton(
+            SoundManager.getInstance().isBgmMuted() ? "🔈 MỞ TIẾNG BGM" : "🔇 TẮT TIẾNG BGM",
+            GameButton.Style.DARK
+        );
+        btnMuteToggle.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnMuteToggle.setPreferredSize(new Dimension(0, 34));
+        btnMuteToggle.addActionListener(e -> {
+            SoundManager.getInstance().toggleBgmMute();
+            boolean muted = SoundManager.getInstance().isBgmMuted();
+            btnMuteToggle.setText(muted ? "🔈 MỞ TIẾNG BGM" : "🔇 TẮT TIẾNG BGM");
+        });
+        musicControlsBox.add(btnMuteToggle);
+
+        // Chọn danh sách bài nhạc nền (Darkwave.wav & OverworldDay.wav)
+        JPanel songRow = new JPanel(new BorderLayout(10, 0));
+        songRow.setOpaque(false);
+        JLabel lblSongTitle = new JLabel("Bản nhạc:");
+        lblSongTitle.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblSongTitle.setForeground(new Color(220, 230, 245));
+        lblSongTitle.setPreferredSize(new Dimension(80, 26));
+        songRow.add(lblSongTitle, BorderLayout.WEST);
+
+        String[] bgmTracks = new String[]{"Darkwave.wav", "OverworldDay.wav"};
+        JComboBox<String> comboTracks = new JComboBox<>(bgmTracks);
+        comboTracks.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        comboTracks.setBackground(new Color(18, 25, 45));
+        comboTracks.setForeground(new Color(255, 205, 80));
+        comboTracks.setSelectedItem(SoundManager.getInstance().getCurrentBgmFileName());
+        comboTracks.addActionListener(e -> {
+            String selected = (String) comboTracks.getSelectedItem();
+            if (selected != null) {
+                SoundManager.getInstance().switchBGM(selected);
+            }
+        });
+        songRow.add(comboTracks, BorderLayout.CENTER);
+        musicControlsBox.add(songRow);
+
+        // Nút quay lại menu chính
+        GameButton btnBackToMain = new GameButton("◀ QUAY LẠI CÀI ĐẶT", GameButton.Style.DARK);
+        btnBackToMain.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnBackToMain.setPreferredSize(new Dimension(0, 36));
+
+        pnlMusicDetails.add(musicControlsBox, BorderLayout.CENTER);
+        pnlMusicDetails.add(btnBackToMain, BorderLayout.SOUTH);
+        sliderTrack.add(pnlMusicDetails);
+
+        sliderViewport.add(sliderTrack);
+        rootCard.add(sliderViewport, BorderLayout.CENTER);
+
+        // ==========================================
+        // HIỆU ỨNG TRƯỢT SANG TRÁI / PHẢI (SLIDE ANIMATION)
+        // ==========================================
+        final Timer[] slideTimer = new Timer[1];
+        btnMusicMenu.addActionListener(e -> {
+            // Đẩy menu chính qua trái (-viewportW), đẩy phần cài đặt nhạc vào từ bên phải
+            if (slideTimer[0] != null && slideTimer[0].isRunning()) slideTimer[0].stop();
+            slideTimer[0] = new Timer(15, null);
+            slideTimer[0].addActionListener(te -> {
+                int curX = sliderTrack.getX();
+                int targetX = -viewportW;
+                int diff = targetX - curX;
+                if (Math.abs(diff) <= 8) {
+                    sliderTrack.setLocation(targetX, 0);
+                    slideTimer[0].stop();
+                } else {
+                    sliderTrack.setLocation(curX + (int) (diff * 0.28f), 0);
+                }
+                sliderViewport.repaint();
+            });
+            slideTimer[0].start();
+        });
+
+        btnBackToMain.addActionListener(e -> {
+            // Trượt ngược lại menu chính (0)
+            if (slideTimer[0] != null && slideTimer[0].isRunning()) slideTimer[0].stop();
+            slideTimer[0] = new Timer(15, null);
+            slideTimer[0].addActionListener(te -> {
+                int curX = sliderTrack.getX();
+                int targetX = 0;
+                int diff = targetX - curX;
+                if (Math.abs(diff) <= 8) {
+                    sliderTrack.setLocation(targetX, 0);
+                    slideTimer[0].stop();
+                } else {
+                    sliderTrack.setLocation(curX + (int) (diff * 0.28f), 0);
+                }
+                sliderViewport.repaint();
+            });
+            slideTimer[0].start();
+        });
+
+        dialog.setContentPane(rootCard);
+        dialog.setVisible(true);
     }
 
     private void showLobbyView() {
@@ -368,29 +588,31 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
     // ==========================================
     private JPanel createLobbyContentView() {
         JPanel panel = new JPanel(new GridLayout(1, 2, 16, 0));
-        panel.setBackground(new Color(11, 15, 26));
+        panel.setOpaque(false);
         panel.setBorder(new EmptyBorder(14, 18, 16, 18));
 
-        // Cột Trái: Danh sách người chơi Online
+        // Cột Trái: Danh sách người chơi Online (Đồng bộ khung và màu chữ với Phòng Đấu Hoạt Động, nền đục mờ để lộ sao rơi)
         GameCardPanel leftPanel = new GameCardPanel(new BorderLayout(0, 10));
-        leftPanel.setBackgroundColor(new Color(16, 22, 38, 230));
-        leftPanel.setBorderColor(new Color(40, 60, 95));
+        leftPanel.setBackgroundColor(new Color(11, 16, 28, 168)); // Nền đục mờ thấy background falling stars
+        leftPanel.setBorderColor(new Color(55, 75, 115));
+        leftPanel.setAccentColor(new Color(255, 120, 50)); // Cùng màu nhấn Starlight Coral/Orange
         leftPanel.setBorder(new EmptyBorder(12, 14, 12, 14));
 
-        JLabel lblOnlineTitle = new JLabel("● NGƯỜI CHƠI ONLINE TRÊN SERVER");
-        lblOnlineTitle.setFont(new Font("Arial", Font.BOLD, 13));
-        lblOnlineTitle.setForeground(new Color(100, 210, 255));
+        JLabel lblOnlineTitle = new JLabel("● PHI CÔNG TRỰC TUYẾN");
+        lblOnlineTitle.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblOnlineTitle.setForeground(new Color(255, 205, 80)); // Cùng màu vàng hổ phách với tiêu đề Phòng Đấu Hoạt Động
         leftPanel.add(lblOnlineTitle, BorderLayout.NORTH);
 
-        onlinePlayersModel = new DefaultTableModel(new String[]{"ID", "Tên Người Chơi", "Trạng Thái"}, 0) {
+        onlinePlayersModel = new DefaultTableModel(new String[]{"ID", "Tên Phi Công", "Trạng Thái"}, 0) {
             @Override
             public boolean isCellEditable(int row, int column) { return false; }
         };
         onlinePlayersTable = createStyledTable(onlinePlayersModel);
         leftPanel.add(createStyledScrollPane(onlinePlayersTable), BorderLayout.CENTER);
 
-        GameButton btnInviteSelected = new GameButton("✉ MỜI NGƯỜI CHƠI ĐÃ CHỌN", GameButton.Style.CYAN);
-        btnInviteSelected.setPreferredSize(new Dimension(0, 36));
+        GameButton btnInviteSelected = new GameButton("✉ MỜI PHI CÔNG ĐÃ CHỌN", GameButton.Style.CORAL);
+        btnInviteSelected.setPreferredSize(new Dimension(0, 38));
+        btnInviteSelected.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnInviteSelected.addActionListener(e -> {
             int row = onlinePlayersTable.getSelectedRow();
             if (row >= 0) {
@@ -404,27 +626,29 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
 
         // Cột Phải: Danh sách Phòng Đấu
         GameCardPanel rightPanel = new GameCardPanel(new BorderLayout(0, 10));
-        rightPanel.setBackgroundColor(new Color(16, 22, 38, 230));
-        rightPanel.setBorderColor(new Color(40, 60, 95));
+        rightPanel.setBackgroundColor(new Color(11, 16, 28, 168)); // Nền đục mờ thấy background falling stars
+        rightPanel.setBorderColor(new Color(55, 75, 115));
+        rightPanel.setAccentColor(new Color(255, 120, 50));
         rightPanel.setBorder(new EmptyBorder(12, 14, 12, 14));
 
-        JLabel lblRoomsTitle = new JLabel("◆ PHÒNG ĐẤU HIỆN CÓ");
-        lblRoomsTitle.setFont(new Font("Arial", Font.BOLD, 13));
+        JLabel lblRoomsTitle = new JLabel("◆ PHÒNG ĐẤU HOẠT ĐỘNG");
+        lblRoomsTitle.setFont(new Font("Segoe UI", Font.BOLD, 13));
         lblRoomsTitle.setForeground(new Color(255, 205, 80));
         rightPanel.add(lblRoomsTitle, BorderLayout.NORTH);
 
-        roomsModel = new DefaultTableModel(new String[]{"ID", "Tên Phòng", "Chủ Phòng", "Số Lượng", "Trạng Thái"}, 0) {
+        roomsModel = new DefaultTableModel(new String[]{"ID", "Tên Phòng", "Chỉ Huy", "Số Phi Đội", "Trạng Thái"}, 0) {
             @Override
             public boolean isCellEditable(int row, int column) { return false; }
         };
         roomsTable = createStyledTable(roomsModel);
         rightPanel.add(createStyledScrollPane(roomsTable), BorderLayout.CENTER);
 
-        JPanel roomButtons = new JPanel(new GridLayout(1, 2, 10, 0));
+        JPanel roomButtons = new JPanel(new GridLayout(1, 2, 12, 0));
         roomButtons.setOpaque(false);
 
-        GameButton btnCreateRoom = new GameButton("+ TẠO PHÒNG", GameButton.Style.GREEN);
-        btnCreateRoom.setPreferredSize(new Dimension(0, 36));
+        GameButton btnCreateRoom = new GameButton("+ TẠO PHÒNG MỚI", GameButton.Style.CORAL);
+        btnCreateRoom.setPreferredSize(new Dimension(0, 38));
+        btnCreateRoom.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnCreateRoom.addActionListener(e -> {
             String rName = JOptionPane.showInputDialog(this, "Nhập tên phòng của bạn:", "Tạo phòng mới", JOptionPane.PLAIN_MESSAGE);
             if (rName != null && !rName.trim().isEmpty()) {
@@ -433,8 +657,9 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         });
         roomButtons.add(btnCreateRoom);
 
-        GameButton btnJoinRoom = new GameButton("▶ VÀO PHÒNG", GameButton.Style.CYAN);
-        btnJoinRoom.setPreferredSize(new Dimension(0, 36));
+        GameButton btnJoinRoom = new GameButton("▶ THAM CHIẾN", GameButton.Style.CORAL);
+        btnJoinRoom.setPreferredSize(new Dimension(0, 38));
+        btnJoinRoom.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnJoinRoom.addActionListener(e -> {
             int row = roomsTable.getSelectedRow();
             if (row >= 0) {
@@ -455,15 +680,15 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
 
     private JTable createStyledTable(DefaultTableModel model) {
         JTable table = new JTable(model);
-        table.setBackground(new Color(13, 18, 32));
-        table.setForeground(Color.WHITE);
-        table.setGridColor(new Color(25, 36, 58));
-        table.setRowHeight(30);
-        table.setFont(new Font("Arial", Font.PLAIN, 12));
-        table.getTableHeader().setBackground(new Color(22, 30, 52));
-        table.getTableHeader().setForeground(new Color(100, 210, 255));
-        table.getTableHeader().setFont(new Font("Arial", Font.BOLD, 12));
-        table.setSelectionBackground(new Color(0, 140, 220, 180));
+        table.setOpaque(false);
+        table.setForeground(new Color(230, 240, 255));
+        table.setGridColor(new Color(35, 50, 75, 120));
+        table.setRowHeight(32);
+        table.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        table.getTableHeader().setBackground(new Color(18, 26, 46, 215));
+        table.getTableHeader().setForeground(new Color(255, 180, 80));
+        table.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
+        table.setSelectionBackground(new Color(255, 120, 40, 160));
         table.setSelectionForeground(Color.WHITE);
         table.setShowVerticalLines(false);
 
@@ -473,16 +698,18 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
                 Component c = super.getTableCellRendererComponent(tbl, val, isSelected, hasFocus, row, col);
                 setHorizontalAlignment(SwingConstants.CENTER);
                 if (!isSelected) {
-                    c.setBackground(row % 2 == 0 ? new Color(14, 20, 36) : new Color(18, 25, 45));
+                    c.setBackground(row % 2 == 0 ? new Color(11, 16, 28, 140) : new Color(16, 24, 42, 175));
                 }
                 if (val != null) {
                     String str = val.toString();
-                    if (str.contains("Đang chờ") || str.contains("Rảnh")) {
+                    if (str.contains("Đang chờ") || str.contains("Rảnh") || str.contains("LOBBY") || str.contains("Sẵn sàng")) {
                         c.setForeground(new Color(80, 240, 140));
-                    } else if (str.contains("Trong trận") || str.contains("Bận")) {
+                    } else if (str.contains("Trong trận") || str.contains("Bận") || str.contains("PLAYING") || str.contains("Đầy")) {
                         c.setForeground(new Color(255, 100, 100));
+                    } else if (str.contains("(BẠN)")) {
+                        c.setForeground(new Color(255, 215, 0));
                     } else {
-                        c.setForeground(isSelected ? Color.WHITE : new Color(220, 230, 245));
+                        c.setForeground(isSelected ? Color.WHITE : new Color(210, 225, 245));
                     }
                 }
                 return c;
@@ -496,7 +723,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         JScrollPane sp = new JScrollPane(comp);
         sp.setOpaque(false);
         sp.getViewport().setOpaque(false);
-        sp.setBorder(new LineBorder(new Color(35, 50, 75), 1, true));
+        sp.setBorder(new LineBorder(new Color(45, 65, 100, 180), 1, true));
         sp.getVerticalScrollBar().setUI(new GameScrollBarUI());
         sp.getHorizontalScrollBar().setUI(new GameScrollBarUI());
         return sp;
@@ -507,23 +734,24 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
     // ==========================================
     private JPanel createRoomContentView() {
         JPanel panel = new JPanel(new BorderLayout(0, 14));
-        panel.setBackground(new Color(11, 15, 26));
+        panel.setOpaque(false);
         panel.setBorder(new EmptyBorder(14, 18, 16, 18));
 
         // Header thông tin phòng
         GameCardPanel roomHeader = new GameCardPanel(new GridLayout(2, 1, 0, 4));
-        roomHeader.setBackgroundColor(new Color(18, 25, 45, 240));
-        roomHeader.setBorderColor(new Color(45, 75, 120));
-        roomHeader.setBorder(new EmptyBorder(10, 16, 10, 16));
+        roomHeader.setBackgroundColor(new Color(11, 16, 28, 175));
+        roomHeader.setBorderColor(new Color(55, 75, 115));
+        roomHeader.setAccentColor(new Color(255, 120, 50));
+        roomHeader.setBorder(new EmptyBorder(10, 18, 10, 18));
 
         lblRoomTitle = new JLabel("◆ PHÒNG: [Đang tải...]");
-        lblRoomTitle.setFont(new Font("Arial", Font.BOLD, 18));
-        lblRoomTitle.setForeground(new Color(255, 215, 0));
+        lblRoomTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        lblRoomTitle.setForeground(new Color(255, 215, 80));
         roomHeader.add(lblRoomTitle);
 
-        lblRoomHost = new JLabel("★ Chủ phòng: [Đang tải...]");
-        lblRoomHost.setFont(new Font("Arial", Font.PLAIN, 13));
-        lblRoomHost.setForeground(new Color(180, 205, 235));
+        lblRoomHost = new JLabel("★ Chỉ huy phòng: [Đang tải...]");
+        lblRoomHost.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        lblRoomHost.setForeground(new Color(180, 210, 245));
         roomHeader.add(lblRoomHost);
 
         panel.add(roomHeader, BorderLayout.NORTH);
@@ -540,26 +768,29 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
 
         // Cột Mời nhanh người chơi ở sảnh (Phải)
         GameCardPanel inviteBox = new GameCardPanel(new BorderLayout(0, 8));
-        inviteBox.setPreferredSize(new Dimension(270, 0));
-        inviteBox.setBackgroundColor(new Color(16, 22, 38, 230));
-        inviteBox.setBorderColor(new Color(40, 60, 95));
+        inviteBox.setPreferredSize(new Dimension(280, 0));
+        inviteBox.setBackgroundColor(new Color(11, 16, 28, 175));
+        inviteBox.setBorderColor(new Color(55, 75, 115));
+        inviteBox.setAccentColor(new Color(255, 120, 50));
         inviteBox.setBorder(new EmptyBorder(10, 12, 10, 12));
 
-        JLabel lblQuickInvite = new JLabel("✉ MỜI NGƯỜI CHƠI ONLINE");
-        lblQuickInvite.setFont(new Font("Arial", Font.BOLD, 13));
-        lblQuickInvite.setForeground(new Color(100, 200, 255));
+        JLabel lblQuickInvite = new JLabel("✉ MỜI PHI CÔNG ONLINE");
+        lblQuickInvite.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblQuickInvite.setForeground(new Color(255, 205, 80));
         inviteBox.add(lblQuickInvite, BorderLayout.NORTH);
 
         inviteListModel = new DefaultListModel<>();
         inviteList = new JList<>(inviteListModel);
-        inviteList.setBackground(new Color(12, 17, 30));
+        inviteList.setOpaque(false);
+        inviteList.setBackground(new Color(10, 15, 26, 160));
         inviteList.setForeground(Color.WHITE);
-        inviteList.setFont(new Font("Arial", Font.PLAIN, 13));
-        inviteList.setFixedCellHeight(28);
+        inviteList.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        inviteList.setFixedCellHeight(30);
         inviteBox.add(createStyledScrollPane(inviteList), BorderLayout.CENTER);
 
-        GameButton btnSendInvite = new GameButton("✉ GỬI LỜI MỜI", GameButton.Style.CYAN);
-        btnSendInvite.setPreferredSize(new Dimension(0, 34));
+        GameButton btnSendInvite = new GameButton("✉ GỬI LỜI MỜI", GameButton.Style.CORAL);
+        btnSendInvite.setPreferredSize(new Dimension(0, 36));
+        btnSendInvite.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnSendInvite.addActionListener(e -> {
             int idx = inviteList.getSelectedIndex();
             if (idx >= 0 && inviteIndexToPid.containsKey(idx)) {
@@ -575,20 +806,20 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         panel.add(centerGrid, BorderLayout.CENTER);
 
         // Bottom Bar: Đếm ngược & Nút Sẵn sàng / Rời phòng
-        JPanel roomBottom = new JPanel(new BorderLayout(0, 8));
+        JPanel roomBottom = new JPanel(new BorderLayout(0, 10));
         roomBottom.setOpaque(false);
 
         lblCountdownBanner = new JLabel("", SwingConstants.CENTER);
-        lblCountdownBanner.setFont(new Font("Arial", Font.BOLD, 17));
+        lblCountdownBanner.setFont(new Font("Segoe UI", Font.BOLD, 18));
         lblCountdownBanner.setForeground(new Color(255, 215, 0));
         roomBottom.add(lblCountdownBanner, BorderLayout.NORTH);
 
-        JPanel actionBtns = new JPanel(new GridLayout(1, 2, 14, 0));
+        JPanel actionBtns = new JPanel(new GridLayout(1, 2, 16, 0));
         actionBtns.setOpaque(false);
 
-        btnReadyToggle = new GameButton("✓ SẴN SÀNG", GameButton.Style.GREEN);
-        btnReadyToggle.setFont(new Font("Arial", Font.BOLD, 15));
-        btnReadyToggle.setPreferredSize(new Dimension(0, 44));
+        btnReadyToggle = new GameButton("✓ SẴN SÀNG CHIẾN ĐẤU", GameButton.Style.GREEN);
+        btnReadyToggle.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        btnReadyToggle.setPreferredSize(new Dimension(0, 46));
         btnReadyToggle.addActionListener(e -> {
             isMyReady = !isMyReady;
             tcpClient.sendToggleReady(isMyReady);
@@ -596,9 +827,9 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         });
         actionBtns.add(btnReadyToggle);
 
-        btnLeaveRoom = new GameButton("✕ RỜI PHÒNG", GameButton.Style.RED);
-        btnLeaveRoom.setFont(new Font("Arial", Font.BOLD, 15));
-        btnLeaveRoom.setPreferredSize(new Dimension(0, 44));
+        btnLeaveRoom = new GameButton("✕ RỜI PHÒNG CHIẾN", GameButton.Style.RED);
+        btnLeaveRoom.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        btnLeaveRoom.setPreferredSize(new Dimension(0, 46));
         btnLeaveRoom.addActionListener(e -> {
             tcpClient.sendLeaveRoom();
             showLobbyView();
@@ -615,11 +846,11 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         slotsPanel.removeAll();
         for (int i = 0; i < 4; i++) {
             GameCardPanel emptySlot = new GameCardPanel(new BorderLayout());
-            emptySlot.setBackgroundColor(new Color(14, 18, 30, 200));
-            emptySlot.setBorderColor(new Color(30, 42, 65));
-            JLabel emptyLabel = new JLabel("Slot #" + (i + 1) + " (Đang trống)", SwingConstants.CENTER);
-            emptyLabel.setForeground(new Color(85, 105, 135));
-            emptyLabel.setFont(new Font("Arial", Font.ITALIC, 13));
+            emptySlot.setBackgroundColor(new Color(11, 15, 26, 145));
+            emptySlot.setBorderColor(new Color(35, 50, 75));
+            JLabel emptyLabel = new JLabel("⬚ PHI ĐỘI #" + (i + 1) + " (ĐANG TRỐNG)", SwingConstants.CENTER);
+            emptyLabel.setForeground(new Color(85, 110, 145));
+            emptyLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
             emptySlot.add(emptyLabel, BorderLayout.CENTER);
             slotsPanel.add(emptySlot);
         }
@@ -630,7 +861,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
             btnReadyToggle.setText("✕ HỦY SẴN SÀNG");
             btnReadyToggle.setStyle(GameButton.Style.GOLD);
         } else {
-            btnReadyToggle.setText("✓ SẴN SÀNG");
+            btnReadyToggle.setText("✓ SẴN SÀNG CHIẾN ĐẤU");
             btnReadyToggle.setStyle(GameButton.Style.GREEN);
         }
     }
@@ -703,13 +934,13 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         SwingUtilities.invokeLater(() -> {
             currentRoomId = roomInfo.id;
             lblRoomTitle.setText("◆ PHÒNG #" + roomInfo.id + ": " + roomInfo.name);
-            lblRoomHost.setText("★ Chủ phòng: " + roomInfo.hostName + " | Trạng thái: " + roomInfo.getStatusDisplay());
+            lblRoomHost.setText("★ Chỉ huy: " + roomInfo.hostName + " | Trạng thái: " + roomInfo.getStatusDisplay());
 
-            // Vẽ lại 4 slots người chơi dạng Card phi thuyền
+            // Vẽ lại 4 slots người chơi dạng Card phi thuyền phong cách Starlight
             slotsPanel.removeAll();
             for (int i = 0; i < 4; i++) {
-                GameCardPanel slot = new GameCardPanel(new BorderLayout(10, 4));
-                slot.setBorder(new EmptyBorder(10, 14, 10, 14));
+                GameCardPanel slot = new GameCardPanel(new BorderLayout(14, 6));
+                slot.setBorder(new EmptyBorder(12, 16, 12, 16));
 
                 if (i < members.size()) {
                     RoomMember m = members.get(i);
@@ -721,43 +952,45 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
                     }
 
                     if (m.isReady) {
-                        slot.setBackgroundColor(new Color(18, 48, 30, 240));
-                        slot.setBorderColor(new Color(50, 220, 110));
-                        slot.setAccentColor(new Color(50, 220, 110));
+                        slot.setBackgroundColor(new Color(16, 44, 30, 185));
+                        slot.setBorderColor(new Color(45, 215, 100));
+                        slot.setAccentColor(new Color(45, 215, 100));
                     } else {
-                        slot.setBackgroundColor(new Color(22, 30, 50, 240));
-                        slot.setBorderColor(new Color(60, 85, 130));
-                        slot.setAccentColor(null);
+                        slot.setBackgroundColor(new Color(14, 22, 38, 175));
+                        slot.setBorderColor(new Color(55, 75, 115));
+                        slot.setAccentColor(new Color(255, 120, 50));
                     }
 
-                    // Icon phi thuyền đại diện cho slot
+                    // Icon phi thuyền đại diện cho slot - nâng kích thước rõ nét
                     BufferedImage shipImg = (i < shipImages.length) ? shipImages[i] : null;
                     if (shipImg != null) {
-                        JLabel shipIcon = new JLabel(new ImageIcon(shipImg.getScaledInstance(38, 34, Image.SCALE_SMOOTH)));
+                        JLabel shipIcon = new JLabel(new ImageIcon(shipImg.getScaledInstance(48, 42, Image.SCALE_SMOOTH)));
                         slot.add(shipIcon, BorderLayout.WEST);
                     }
 
                     // Thông tin tên và trạng thái
-                    JPanel infoPanel = new JPanel(new GridLayout(2, 1, 0, 2));
+                    JPanel infoPanel = new JPanel(new GridLayout(2, 1, 0, 4));
                     infoPanel.setOpaque(false);
 
-                    JLabel lblName = new JLabel((m.isHost ? "★ " : "") + m.name + (m.id == myPlayerId ? " (BẠN)" : ""));
-                    lblName.setFont(new Font("Arial", Font.BOLD, 14));
+                    String hostTag = m.isHost ? "👑 " : "🚀 ";
+                    JLabel lblName = new JLabel(hostTag + m.name + (m.id == myPlayerId ? " (BẠN)" : ""));
+                    lblName.setFont(new Font("Segoe UI", Font.BOLD, 15));
                     lblName.setForeground(m.isHost ? new Color(255, 215, 0) : Color.WHITE);
                     infoPanel.add(lblName);
 
-                    JLabel lblState = new JLabel(m.isReady ? "✓ ĐÃ SẴN SÀNG" : "... CHƯA SẴN SÀNG");
-                    lblState.setFont(new Font("Arial", Font.BOLD, 12));
-                    lblState.setForeground(m.isReady ? new Color(90, 255, 140) : new Color(255, 175, 75));
+                    JLabel lblState = new JLabel(m.isReady ? "● ĐÃ SẴN SÀNG" : "○ ĐANG CHUẨN BỊ...");
+                    lblState.setFont(new Font("Segoe UI", Font.BOLD, 12));
+                    lblState.setForeground(m.isReady ? new Color(80, 245, 140) : new Color(255, 175, 75));
                     infoPanel.add(lblState);
 
                     slot.add(infoPanel, BorderLayout.CENTER);
                 } else {
-                    slot.setBackgroundColor(new Color(14, 18, 30, 180));
-                    slot.setBorderColor(new Color(30, 42, 65));
-                    JLabel emptyLabel = new JLabel("Slot #" + (i + 1) + " (Đang trống)", SwingConstants.CENTER);
-                    emptyLabel.setForeground(new Color(85, 105, 135));
-                    emptyLabel.setFont(new Font("Arial", Font.ITALIC, 13));
+                    slot.setBackgroundColor(new Color(11, 15, 26, 145));
+                    slot.setBorderColor(new Color(35, 50, 75));
+                    slot.setAccentColor(null);
+                    JLabel emptyLabel = new JLabel("⬚ PHI ĐỘI #" + (i + 1) + " (ĐANG TRỐNG)", SwingConstants.CENTER);
+                    emptyLabel.setForeground(new Color(85, 110, 145));
+                    emptyLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
                     slot.add(emptyLabel, BorderLayout.CENTER);
                 }
                 slotsPanel.add(slot);
@@ -791,38 +1024,40 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
             // Custom Sci-Fi Invite Dialog
             JDialog dialog = new JDialog(this, "Lời mời vào phòng", true);
             dialog.setUndecorated(true);
-            dialog.setSize(440, 210);
+            dialog.setSize(460, 220);
             dialog.setLocationRelativeTo(this);
 
             GameCardPanel pnl = new GameCardPanel(new BorderLayout(0, 14));
-            pnl.setBackgroundColor(new Color(18, 25, 45, 250));
-            pnl.setBorderColor(new Color(0, 210, 255));
-            pnl.setAccentColor(new Color(0, 225, 255));
-            pnl.setBorder(new EmptyBorder(16, 20, 16, 20));
+            pnl.setBackgroundColor(new Color(13, 18, 32, 252));
+            pnl.setBorderColor(new Color(255, 120, 40));
+            pnl.setAccentColor(new Color(255, 120, 40));
+            pnl.setBorder(new EmptyBorder(18, 22, 18, 22));
 
-            JLabel lblTitle = new JLabel("✉ LỜI MỜI THAM GIA PHÒNG ĐẤU", SwingConstants.CENTER);
-            lblTitle.setFont(new Font("Arial", Font.BOLD, 15));
-            lblTitle.setForeground(new Color(0, 220, 255));
+            JLabel lblTitle = new JLabel("✉ LỜI MỜI THAM CHIẾN PHÒNG ĐẤU", SwingConstants.CENTER);
+            lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 15));
+            lblTitle.setForeground(new Color(255, 160, 50));
             pnl.add(lblTitle, BorderLayout.NORTH);
 
-            JLabel lblMsg = new JLabel("<html><div style='text-align: center; color: #E0E8F5;'>"
-                + "Phi công <b style='color: #FFD700; font-size: 14px;'>" + fromName + "</b> muốn mời bạn tham chiến tại:<br><br>"
-                + "<span style='font-size: 13px; color: #64FFDA;'>◆ " + roomName + " (Phòng #" + roomId + ")</span>"
+            JLabel lblMsg = new JLabel("<html><div style='text-align: center; color: #E0E8F5; font-family: Segoe UI;'>"
+                + "Phi công <b style='color: #FFD700; font-size: 15px;'>" + fromName + "</b> muốn mời bạn tham gia đội ngũ:<br><br>"
+                + "<span style='font-size: 14px; color: #64FFDA;'>◆ " + roomName + " (Phòng #" + roomId + ")</span>"
                 + "</div></html>", SwingConstants.CENTER);
             pnl.add(lblMsg, BorderLayout.CENTER);
 
             JPanel btnPnl = new JPanel(new GridLayout(1, 2, 14, 0));
             btnPnl.setOpaque(false);
 
-            GameButton btnAccept = new GameButton("✓ THAM GIA", GameButton.Style.GREEN);
-            btnAccept.setPreferredSize(new Dimension(0, 38));
+            GameButton btnAccept = new GameButton("✓ CHẤP NHẬN", GameButton.Style.GREEN);
+            btnAccept.setPreferredSize(new Dimension(0, 40));
+            btnAccept.setFont(new Font("Segoe UI", Font.BOLD, 13));
             btnAccept.addActionListener(e -> {
                 dialog.dispose();
                 tcpClient.sendInviteResponse(roomId, true);
             });
 
             GameButton btnDecline = new GameButton("✕ TỪ CHỐI", GameButton.Style.DARK);
-            btnDecline.setPreferredSize(new Dimension(0, 38));
+            btnDecline.setPreferredSize(new Dimension(0, 40));
+            btnDecline.setFont(new Font("Segoe UI", Font.BOLD, 13));
             btnDecline.addActionListener(e -> {
                 dialog.dispose();
                 tcpClient.sendInviteResponse(roomId, false);
@@ -891,6 +1126,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         SwingUtilities.invokeLater(() -> {
             // Tạm dừng BGM sảnh khi vào trận đấu chiến đấu
             SoundManager.getInstance().pauseBGM();
+            if (dashboardView != null) dashboardView.stopAnimation();
 
             lblCountdownBanner.setText("");
             rootCardLayout.show(rootPanel, "GAME");
@@ -922,6 +1158,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
             }
             // Tiếp tục phát BGM khi quay lại sảnh
             SoundManager.getInstance().resumeBGM();
+            if (dashboardView != null) dashboardView.startAnimation();
 
             rootCardLayout.show(rootPanel, "DASHBOARD");
             showLobbyView();
