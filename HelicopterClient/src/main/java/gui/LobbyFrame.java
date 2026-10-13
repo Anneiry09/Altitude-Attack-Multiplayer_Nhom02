@@ -229,7 +229,9 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
                 if (ok) {
                     currentServerIP = ip;
                     myPlayerName = name;
-                    lblPlayerProfile.setText("PILOT: " + name + " (#" + tcpClient.getMyPlayerId() + ")");
+                    myPlayerId = tcpClient.getMyPlayerId();
+                    playerNamesMap.put(myPlayerId, name);
+                    lblPlayerProfile.setText("PILOT: " + name + " (#" + myPlayerId + ")");
                     if (loginView != null) loginView.stopAnimation();
                     rootCardLayout.show(rootPanel, "DASHBOARD");
                     showLobbyView();
@@ -669,6 +671,9 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
     @Override
     public void onConnected(byte myPlayerId) {
         this.myPlayerId = myPlayerId;
+        if (myPlayerName != null && !myPlayerName.isEmpty()) {
+            playerNamesMap.put(myPlayerId, myPlayerName);
+        }
     }
 
     @Override
@@ -690,11 +695,16 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
             // Cập nhật danh sách người chơi online
             onlinePlayersModel.setRowCount(0);
             for (OnlinePlayer p : players) {
+                playerNamesMap.put(p.id, p.name);
                 onlinePlayersModel.addRow(new Object[]{
                     p.id,
                     p.name + (p.id == myPlayerId ? " (YOU)" : ""),
                     p.getStatusDisplay()
                 });
+            }
+
+            if (gamePanel != null) {
+                gamePanel.updatePlayerNames(playerNamesMap);
             }
 
             updateInviteList();
@@ -731,6 +741,12 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
     public void onRoomData(RoomInfo roomInfo, List<RoomMember> members) {
         SwingUtilities.invokeLater(() -> {
             currentRoomId = roomInfo.id;
+            for (RoomMember m : members) {
+                playerNamesMap.put(m.id, m.name);
+            }
+            if (gamePanel != null) {
+                gamePanel.updatePlayerNames(playerNamesMap);
+            }
             lblRoomTitle.setText("ROOM #" + roomInfo.id + ": " + roomInfo.name);
             lblRoomHost.setText("HOST: " + roomInfo.hostName + " | STATUS: " + roomInfo.getStatusDisplay());
             lblRoomHost.setIcon(UIAssetManager.getStarIcon(16));
@@ -930,6 +946,10 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
             // Tạm dừng BGM sảnh khi vào trận đấu chiến đấu
             SoundManager.getInstance().pauseBGM();
 
+            if (myPlayerId >= 0 && myPlayerName != null && !myPlayerName.isEmpty()) {
+                playerNamesMap.put(myPlayerId, myPlayerName);
+            }
+
             lblCountdownBanner.setText("");
             rootCardLayout.show(rootPanel, "GAME");
 
@@ -942,6 +962,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
                 gameContainer.removeAll();
                 gameContainer.add(gamePanel, BorderLayout.CENTER);
             } else {
+                gamePanel.updatePlayerNames(playerNamesMap);
                 gamePanel.resetForRematch();
             }
 

@@ -89,7 +89,25 @@ public class GameEngine implements Runnable {
             if (tick >= MATCH_DURATION_TICKS) {
                 if (!isGameOver) {
                     isGameOver = true;
-                    System.out.println("[GameEngine] MATCH OVER! Time limit reached (60s).");
+                    int maxScore = -1;
+                    int tiedCount = 0;
+                    byte winnerId = -1;
+                    for (Player p : players.values()) {
+                        if (p.score > maxScore) {
+                            maxScore = p.score;
+                            tiedCount = 1;
+                            winnerId = p.id;
+                        } else if (p.score == maxScore) {
+                            tiedCount++;
+                        }
+                    }
+                    if (tiedCount >= 2) {
+                        System.out.println("[GameEngine] MATCH OVER (60s)! KẾT QUẢ: HÒA (DRAW) - " + tiedCount + " người chơi có cùng " + maxScore + " kills!");
+                    } else if (winnerId != -1) {
+                        System.out.println("[GameEngine] MATCH OVER (60s)! KẾT QUẢ: CHIẾN THẮNG - Player #" + winnerId + " dẫn đầu với " + maxScore + " kills!");
+                    } else {
+                        System.out.println("[GameEngine] MATCH OVER! Time limit reached (60s).");
+                    }
                 }
             }
 

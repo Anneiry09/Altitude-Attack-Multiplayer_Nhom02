@@ -52,7 +52,7 @@ public class GamePanel extends JPanel {
     private UDPClient udpClient;
     private TCPClient tcpClient;
     private byte myPlayerId;
-    private Map<Byte, String> playerNames;
+    private final Map<Byte, String> playerNames = new ConcurrentHashMap<>();
 
     private boolean keyW, keyA, keyS, keyD;
     private boolean isShooting;
@@ -126,7 +126,9 @@ public class GamePanel extends JPanel {
         this.udpClient = udpClient;
         this.tcpClient = tcpClient;
         this.myPlayerId = (tcpClient != null) ? tcpClient.getMyPlayerId() : 0;
-        this.playerNames = (playerNames != null) ? playerNames : new HashMap<>();
+        if (playerNames != null) {
+            this.playerNames.putAll(playerNames);
+        }
 
         this.setBackground(Color.BLACK);
         this.setFocusable(true);
@@ -183,6 +185,12 @@ public class GamePanel extends JPanel {
         void onReturnToLobby();
     }
     private GamePanelListener panelListener;
+
+    public void updatePlayerNames(Map<Byte, String> names) {
+        if (names != null) {
+            this.playerNames.putAll(names);
+        }
+    }
 
     public void setGamePanelListener(GamePanelListener listener) {
         this.panelListener = listener;
@@ -949,40 +957,21 @@ public class GamePanel extends JPanel {
                 g2d.setTransform(oldXf);
             }
 
-            // Vẽ thanh máu (HP Bar)
-            int barW = 40;
+            // 4.2. Vẽ thanh máu (HP Bar)
+            int barW = 44;
             int barH = 5;
             int barX = (int) rp.x - barW / 2;
-            int barY = (int) rp.y - shipH / 2 - 12;
+            int barY = (int) rp.y - shipH / 2 - 10;
 
-            g2d.setColor(Color.RED);
+            g2d.setColor(new Color(220, 45, 45));
             g2d.fillRect(barX, barY, barW, barH);
-            g2d.setColor(Color.GREEN);
+            g2d.setColor(new Color(50, 230, 95));
             int currentHpW = (int) (barW * (Math.max(0, hp) / 100.0f));
             g2d.fillRect(barX, barY, currentHpW, barH);
-            g2d.setColor(Color.BLACK);
+            g2d.setColor(new Color(15, 20, 30));
             g2d.drawRect(barX, barY, barW, barH);
 
-            // Tên + Điểm + Khiên + Buff
-            g2d.setColor(Color.WHITE);
-            g2d.setFont(new Font("Arial", Font.BOLD, 11));
-            String pName = playerNames.getOrDefault(pid, "Player #" + pid);
-            String shieldText = (sHits > 0 ? " [SHIELDx" + sHits + "]" : "");
-            String buffText = "";
-            byte remBuff = (i < state.playerBuffRemainingSeconds.length) ? state.playerBuffRemainingSeconds[i] : 0;
-            String remBuffStr = (remBuff > 0) ? " " + remBuff + "s" : "";
-            if (wBuff == 1) buffText = " [3-WAY" + remBuffStr + "]";
-            else if (wBuff == 2) buffText = " [CLUSTER" + remBuffStr + "]";
-            else if (wBuff == 3) buffText = " [ORBIT" + remBuffStr + "]";
-            String info = (pid == myPlayerId ? "[YOU] " : "") + pName + " (" + score + " kills)" + shieldText + buffText;
-            g2d.drawString(info, barX - 10, barY - 3);
-
-            // Icon thuốc mini bên cạnh thanh máu nếu có buff
-            if (wBuff >= 1 && wBuff <= 3 && pillImages[wBuff] != null) {
-                g2d.drawImage(pillImages[wBuff], barX + barW + 5, barY - 5, 14, 13, null);
-            }
-
-            // Vẽ các nấc khiên (Shield Pips) phía trên thanh máu
+            // 4.3. Vẽ các nấc khiên (Shield Pips) phía trên thanh máu (nếu có khiên)
             if (sHits > 0) {
                 Color pipColor = (sType == 3) ? new Color(255, 215, 0) : (sType == 2 ? new Color(180, 230, 255) : new Color(225, 145, 75));
                 int pipW = 8;
@@ -990,13 +979,39 @@ public class GamePanel extends JPanel {
                 int pipGap = 3;
                 int totalPipW = sHits * pipW + (sHits - 1) * pipGap;
                 int pipX = (int) rp.x - totalPipW / 2;
-                int pipY = barY - 7;
+                int pipY = barY - 5;
                 for (int pIdx = 0; pIdx < sHits; pIdx++) {
                     g2d.setColor(pipColor);
                     g2d.fillRect(pipX + pIdx * (pipW + pipGap), pipY, pipW, pipH);
                     g2d.setColor(Color.WHITE);
                     g2d.drawRect(pipX + pIdx * (pipW + pipGap), pipY, pipW, pipH);
                 }
+            }
+
+            // 4.4. TÊN PHI CÔNG HIỂN THỊ CĂN GIỮA PHÍA TRÊN PHI THUYỀN
+            g2d.setFont(new Font("Segoe UI", Font.BOLD, 11));
+            FontMetrics fmPilot = g2d.getFontMetrics();
+            String pName = playerNames.getOrDefault(pid, "Pilot #" + pid);
+            String pilotDisplay = (pid == myPlayerId ? "[YOU] " : "") + pName;
+            int pilotW = fmPilot.stringWidth(pilotDisplay);
+            int pilotX = (int) rp.x - pilotW / 2;
+            int pilotY = (sHits > 0) ? barY - 8 : barY - 4;
+
+            // Đổ bóng chữ đen
+            g2d.setColor(new Color(0, 0, 0, 230));
+            g2d.drawString(pilotDisplay, pilotX + 1, pilotY + 1);
+
+            // Màu chữ phi công
+            if (pid == myPlayerId) {
+                g2d.setColor(new Color(60, 240, 255)); // Neon Cyan cho bạn
+            } else {
+                g2d.setColor(new Color(245, 245, 250)); // Trắng sáng cho đối thủ
+            }
+            g2d.drawString(pilotDisplay, pilotX, pilotY);
+
+            // Icon thuốc mini bên cạnh thanh máu nếu có buff
+            if (wBuff >= 1 && wBuff <= 3 && pillImages[wBuff] != null) {
+                g2d.drawImage(pillImages[wBuff], barX + barW + 5, barY - 4, 13, 12, null);
             }
         }
 
@@ -1028,6 +1043,9 @@ public class GamePanel extends JPanel {
         int tx = timerX + (timerW - fmTime.stringWidth(timeStr)) / 2;
         int ty = timerY + ((timerH - fmTime.getHeight()) / 2) + fmTime.getAscent();
         g2d.drawString(timeStr, tx, ty);
+
+        // 5.1. Bảng điểm góc phải thời gian thực (In-Game Real-Time Scoreboard)
+        drawInGameScoreboard(g2d, state);
 
         // 5.5. Bảng thông báo Buff vũ khí góc dưới bên trái (Weapon Buff Status HUD)
         if (curMyBuff >= 1 && curMyBuff <= 3) {
@@ -1106,34 +1124,6 @@ public class GamePanel extends JPanel {
             g2d.setColor(new Color(5, 10, 20, 225));
             g2d.fillRect(0, 0, getWidth(), getHeight());
 
-            // Khung Bảng xếp hạng chính giữa
-            int boardW = 480;
-            int boardH = 380;
-            int boardX = (getWidth() - boardW) / 2;
-            int boardY = (getHeight() - boardH) / 2;
-
-            g2d.setColor(new Color(20, 25, 45, 250));
-            g2d.fillRoundRect(boardX, boardY, boardW, boardH, 20, 20);
-            g2d.setColor(new Color(255, 215, 0)); // Viền vàng kim
-            g2d.setStroke(new BasicStroke(2.5f));
-            g2d.drawRoundRect(boardX, boardY, boardW, boardH, 20, 20);
-
-            // Tiêu đề
-            g2d.setFont(new Font("Arial", Font.BOLD, 22));
-            g2d.setColor(new Color(255, 215, 0));
-            String title = "🏆 MATCH OVER - LEADERBOARD 🏆";
-            FontMetrics fmTitle = g2d.getFontMetrics();
-            g2d.drawString(title, boardX + (boardW - fmTitle.stringWidth(title)) / 2, boardY + 42);
-
-            g2d.setFont(new Font("Arial", Font.PLAIN, 13));
-            g2d.setColor(new Color(180, 190, 210));
-            String sub = "Tổng kết xếp hạng số mạng tiêu diệt sau 60 giây";
-            FontMetrics fmSub = g2d.getFontMetrics();
-            g2d.drawString(sub, boardX + (boardW - fmSub.stringWidth(sub)) / 2, boardY + 66);
-
-            g2d.setColor(new Color(60, 75, 110));
-            g2d.drawLine(boardX + 30, boardY + 80, boardX + boardW - 30, boardY + 80);
-
             // Xếp hạng danh sách theo Score giảm dần
             class PlayerRank {
                 byte id;
@@ -1146,54 +1136,155 @@ public class GamePanel extends JPanel {
             }
             ranks.sort((a, b) -> Integer.compare(b.score, a.score));
 
+            // Kiểm tra cơ chế HÒA (DRAW): khi có 2 hoặc nhiều người cùng đạt số điểm cao nhất
+            int maxScore = ranks.isEmpty() ? 0 : ranks.get(0).score;
+            int tiedTopCount = 0;
+            for (PlayerRank pr : ranks) {
+                if (pr.score == maxScore) tiedTopCount++;
+            }
+            boolean isMatchDraw = (tiedTopCount >= 2);
+
+            // Khung Bảng xếp hạng chính giữa
+            int boardW = 480;
+            int boardH = 380;
+            int boardX = (getWidth() - boardW) / 2;
+            int boardY = (getHeight() - boardH) / 2;
+
+            g2d.setColor(new Color(20, 25, 45, 250));
+            g2d.fillRoundRect(boardX, boardY, boardW, boardH, 20, 20);
+
+            // Viền phát quang và 4 góc Starlight theo kết quả Hòa hay Thắng
+            Color themeColor;
+            if (isMatchDraw) {
+                themeColor = (maxScore > 0) ? new Color(255, 175, 50) : new Color(140, 210, 255);
+            } else {
+                themeColor = new Color(255, 215, 0); // Vàng kim Gold
+            }
+            g2d.setColor(themeColor);
+            g2d.setStroke(new BasicStroke(2.5f));
+            g2d.drawRoundRect(boardX, boardY, boardW, boardH, 20, 20);
+            drawButtonBrackets(g2d, boardX, boardY, boardW, boardH, themeColor);
+
+            // Tiêu đề & Phụ đề thông báo kết quả
+            String title;
+            Color titleColor;
+            String sub;
+            if (isMatchDraw) {
+                if (maxScore > 0) {
+                    title = "⚔️ MATCH DRAW - BẤT PHÂN THẮNG BẠI ⚔️";
+                    titleColor = new Color(255, 175, 50); // Hổ phách Starlight Amber
+                    sub = "Kết quả Hòa! " + tiedTopCount + " phi công có cùng " + maxScore + " mạng tiêu diệt!";
+                } else {
+                    title = "🤝 MATCH DRAW - HÒA NHAU (0 - 0) 🤝";
+                    titleColor = new Color(140, 210, 255); // Cyan mềm
+                    sub = "Trận đấu hòa: Không có phi công nào bị tiêu diệt sau 60 giây!";
+                }
+            } else {
+                title = "🏆 VICTORY - LEADERBOARD 🏆";
+                titleColor = new Color(255, 215, 0); // Vàng kim Gold
+                String winnerName = ranks.isEmpty() ? "None" : playerNames.getOrDefault(ranks.get(0).id, "Pilot #" + ranks.get(0).id);
+                sub = "Vinh danh " + winnerName + " đã xuất sắc giành chiến thắng với " + maxScore + " Kills!";
+            }
+
+            g2d.setFont(new Font("Segoe UI", Font.BOLD, 20));
+            g2d.setColor(titleColor);
+            FontMetrics fmTitle = g2d.getFontMetrics();
+            g2d.drawString(title, boardX + (boardW - fmTitle.stringWidth(title)) / 2, boardY + 42);
+
+            g2d.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+            g2d.setColor(new Color(185, 200, 225));
+            FontMetrics fmSub = g2d.getFontMetrics();
+            g2d.drawString(sub, boardX + (boardW - fmSub.stringWidth(sub)) / 2, boardY + 66);
+
+            g2d.setColor(new Color(60, 75, 110));
+            g2d.drawLine(boardX + 30, boardY + 80, boardX + boardW - 30, boardY + 80);
+
             int rowY = boardY + 108;
             for (int r = 0; r < ranks.size(); r++) {
                 PlayerRank pr = ranks.get(r);
                 boolean isMe = (pr.id == myPlayerId);
-                boolean isWinner = (r == 0 && pr.score > 0);
+                boolean isTopTied = (isMatchDraw && pr.score == maxScore);
+                boolean isClearWinner = (!isMatchDraw && r == 0 && maxScore > 0);
 
-                if (r == 0) {
-                    g2d.setColor(new Color(255, 215, 0, 45)); // Hạng 1 ánh vàng
+                if (isClearWinner) {
+                    g2d.setColor(new Color(255, 215, 0, 45)); // Hạng 1 thắng tuyệt đối
+                } else if (isTopTied) {
+                    g2d.setColor(new Color(255, 160, 40, 40)); // Đồng hạng 1 (Hòa)
                 } else if (isMe) {
-                    g2d.setColor(new Color(0, 255, 128, 30)); // Của bản thân ánh xanh
+                    g2d.setColor(new Color(0, 220, 255, 30)); // Bản thân
                 } else {
                     g2d.setColor(new Color(255, 255, 255, 15));
                 }
                 g2d.fillRoundRect(boardX + 30, rowY - 18, boardW - 60, 36, 10, 10);
 
-                // Huy hiệu Hạng
-                String rankBadge;
-                Color rankColor;
-                if (r == 0) {
-                    rankBadge = "🥇 1st";
-                    rankColor = new Color(255, 215, 0);
-                } else if (r == 1) {
-                    rankBadge = "🥈 2nd";
-                    rankColor = new Color(210, 210, 210);
-                } else if (r == 2) {
-                    rankBadge = "🥉 3rd";
-                    rankColor = new Color(205, 127, 50);
-                } else {
-                    rankBadge = "   " + (r + 1) + "th";
-                    rankColor = Color.LIGHT_GRAY;
+                // Viền phát sáng cho người thắng hoặc hòa hạng 1
+                if (isClearWinner) {
+                    g2d.setColor(new Color(255, 215, 0, 180));
+                    g2d.setStroke(new BasicStroke(1.4f));
+                    g2d.drawRoundRect(boardX + 30, rowY - 18, boardW - 60, 36, 10, 10);
+                } else if (isTopTied) {
+                    g2d.setColor(new Color(255, 165, 50, 180));
+                    g2d.setStroke(new BasicStroke(1.4f));
+                    g2d.drawRoundRect(boardX + 30, rowY - 18, boardW - 60, 36, 10, 10);
                 }
 
-                g2d.setFont(new Font("Arial", Font.BOLD, 15));
+                // Huy hiệu Thứ hạng
+                String rankBadge;
+                Color rankColor;
+                if (isTopTied) {
+                    rankBadge = "🤝 DRAW";
+                    rankColor = new Color(255, 185, 60);
+                } else if (isClearWinner) {
+                    rankBadge = "🥇 1st";
+                    rankColor = new Color(255, 215, 0);
+                } else {
+                    // Tính thứ hạng thực tế dựa trên điểm số
+                    int actualRank = 1;
+                    for (int j = 0; j < r; j++) {
+                        if (ranks.get(j).score > pr.score) actualRank++;
+                    }
+                    if (actualRank == 2) {
+                        rankBadge = "🥈 2nd";
+                        rankColor = new Color(215, 225, 240);
+                    } else if (actualRank == 3) {
+                        rankBadge = "🥉 3rd";
+                        rankColor = new Color(215, 145, 75);
+                    } else {
+                        rankBadge = "   " + actualRank + "th";
+                        rankColor = new Color(160, 175, 195);
+                    }
+                }
+
+                g2d.setFont(new Font("Segoe UI", Font.BOLD, 14));
                 g2d.setColor(rankColor);
                 g2d.drawString(rankBadge, boardX + 45, rowY + 6);
 
                 // Tên người chơi
-                String name = playerNames.getOrDefault(pr.id, "Player #" + pr.id);
+                String name = playerNames.getOrDefault(pr.id, "Pilot #" + pr.id);
                 if (isMe) name += " (YOU)";
-                g2d.setFont(new Font("Arial", Font.BOLD, 14));
-                g2d.setColor(isMe ? new Color(100, 255, 150) : Color.WHITE);
+                g2d.setFont(new Font("Segoe UI", Font.BOLD, 13));
+                if (isMe) {
+                    g2d.setColor(new Color(60, 240, 255));
+                } else if (isTopTied || isClearWinner) {
+                    g2d.setColor(new Color(255, 235, 170));
+                } else {
+                    g2d.setColor(Color.WHITE);
+                }
                 g2d.drawString(name, boardX + 130, rowY + 6);
 
-                // Số mạng tiêu diệt (Kills)
+                // Số mạng tiêu diệt (Kills) & Danh hiệu
                 String killText = pr.score + " Kills";
-                if (isWinner) killText += " 👑 WINNER";
-                g2d.setFont(new Font("Arial", Font.BOLD, 14));
-                g2d.setColor(isWinner ? new Color(255, 215, 0) : new Color(220, 220, 220));
+                Color killColor = new Color(200, 215, 235);
+                if (isClearWinner) {
+                    killText += "  👑 WINNER";
+                    killColor = new Color(255, 215, 0);
+                } else if (isTopTied) {
+                    killText += "  🤝 TIED";
+                    killColor = new Color(255, 185, 60);
+                }
+
+                g2d.setFont(new Font("Segoe UI", Font.BOLD, 13));
+                g2d.setColor(killColor);
                 g2d.drawString(killText, boardX + 300, rowY + 6);
 
                 rowY += 44;
@@ -1279,6 +1370,170 @@ public class GamePanel extends JPanel {
             String lobbyText = "🚪 VỀ SẢNH";
             FontMetrics fmLobby = g2d.getFontMetrics();
             g2d.drawString(lobbyText, btnLobbyX + (btnLobbyW - fmLobby.stringWidth(lobbyText)) / 2, btnY + 26);
+        }
+    }
+
+    // 5.2. BẢNG ĐIỂM GÓC PHẢI THỜI GIAN THỰC (IN-GAME REAL-TIME SCOREBOARD)
+    private void drawInGameScoreboard(Graphics2D g2d, StatePacket state) {
+        if (state == null || state.playerCount <= 0 || state.remainingSeconds <= 0) return;
+
+        // 1. Thu thập & Sắp xếp người chơi theo số mạng tiêu diệt (Score giảm dần)
+        class ScoreEntry {
+            byte id;
+            String name;
+            byte score;
+            byte hp;
+            ScoreEntry(byte id, String name, byte score, byte hp) {
+                this.id = id;
+                this.name = name;
+                this.score = score;
+                this.hp = hp;
+            }
+        }
+
+        List<ScoreEntry> list = new ArrayList<>();
+        for (int i = 0; i < state.playerCount; i++) {
+            byte pid = state.playerIds[i];
+            byte sc = state.playerScores[i];
+            byte php = state.playerHPs[i];
+            String pName = playerNames.getOrDefault(pid, "Pilot #" + pid);
+            list.add(new ScoreEntry(pid, pName, sc, php));
+        }
+        list.sort((a, b) -> Integer.compare(b.score, a.score));
+
+        // Kiểm tra hòa dẫn đầu trong trận (Live Tie for First Place)
+        int maxScore = list.isEmpty() ? 0 : list.get(0).score;
+        int topTiedCount = 0;
+        for (ScoreEntry se : list) {
+            if (se.score == maxScore) topTiedCount++;
+        }
+        boolean isTopTied = (maxScore > 0 && topTiedCount >= 2);
+
+        int boardW = 215;
+        int headerH = 26;
+        int rowH = 22;
+        int boardH = headerH + (state.playerCount * rowH) + 6;
+        int boardX = getWidth() - boardW - 14;
+        int boardY = 12;
+
+        // 2. Nền kính mờ bán trong suốt (Glassmorphism)
+        g2d.setColor(new Color(11, 15, 26, 215));
+        g2d.fillRoundRect(boardX, boardY, boardW, boardH, 10, 10);
+
+        // 3. Viền ngoài công nghệ
+        g2d.setColor(new Color(40, 65, 100));
+        g2d.setStroke(new BasicStroke(1.2f));
+        g2d.drawRoundRect(boardX, boardY, boardW, boardH, 10, 10);
+
+        // 4. 4 Góc ngoặc Starlight L-Brackets phát quang
+        Color bracketColor = isTopTied ? new Color(255, 185, 60) : (maxScore > 0 ? new Color(255, 215, 0) : new Color(100, 160, 230));
+        drawButtonBrackets(g2d, boardX, boardY, boardW, boardH, bracketColor);
+
+        // 5. Header bảng điểm
+        g2d.setColor(new Color(18, 25, 45, 230));
+        g2d.fillRoundRect(boardX + 2, boardY + 2, boardW - 4, headerH - 2, 8, 8);
+
+        // Tiêu đề: SCOREBOARD hoặc TIED BATTLE
+        g2d.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        if (isTopTied) {
+            g2d.setColor(new Color(255, 185, 60)); // Amber hòa dẫn đầu
+            g2d.drawString("🤝 TIED (" + maxScore + " KILLS)", boardX + 10, boardY + 17);
+        } else if (maxScore > 0) {
+            g2d.setColor(new Color(255, 215, 0)); // Vàng Gold
+            g2d.drawString("★ SCOREBOARD", boardX + 10, boardY + 17);
+        } else {
+            g2d.setColor(new Color(175, 210, 245)); // Xanh nhạt
+            g2d.drawString("★ SCOREBOARD", boardX + 10, boardY + 17);
+        }
+
+        // Cột: KILLS
+        g2d.setFont(new Font("Segoe UI", Font.BOLD, 10));
+        g2d.setColor(new Color(140, 175, 220));
+        g2d.drawString("KILLS", boardX + boardW - 44, boardY + 17);
+
+        // 6. Vẽ từng dòng người chơi
+        g2d.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        FontMetrics fm = g2d.getFontMetrics();
+
+        // Bảng màu chấm tròn đại diện theo phi thuyền
+        Color[] shipColors = new Color[]{
+            new Color(80, 225, 120),  // Green
+            new Color(255, 85, 85),   // Red
+            new Color(75, 175, 255),  // Blue
+            new Color(255, 170, 50)   // Orange
+        };
+
+        for (int r = 0; r < list.size(); r++) {
+            ScoreEntry entry = list.get(r);
+            int rowY = boardY + headerH + (r * rowH) + 4;
+            boolean isMe = (entry.id == myPlayerId);
+
+            // Tính thứ hạng thực tế dựa trên competition rank (1, 1, 3, ...)
+            int actualRank = 1;
+            for (int j = 0; j < r; j++) {
+                if (list.get(j).score > entry.score) actualRank++;
+            }
+
+            boolean isTopLeaderTied = (isTopTied && entry.score == maxScore);
+            boolean isSoloLeader = (!isTopTied && r == 0 && entry.score > 0);
+
+            // Nền highlight nếu là bản thân
+            if (isMe) {
+                g2d.setColor(new Color(0, 180, 230, 45));
+                g2d.fillRoundRect(boardX + 4, rowY, boardW - 8, rowH - 2, 6, 6);
+            }
+
+            // Thứ hạng: #1, #2, #3, #4
+            String rankText = "#" + actualRank;
+            Color rankColor;
+            if (isTopLeaderTied) {
+                rankColor = new Color(255, 185, 60); // Amber tie
+            } else if (isSoloLeader) {
+                rankColor = new Color(255, 215, 0); // Gold solo leader
+            } else {
+                rankColor = new Color(160, 180, 205);
+            }
+            g2d.setColor(rankColor);
+            g2d.drawString(rankText, boardX + 8, rowY + 14);
+
+            // Chấm màu phi thuyền
+            Color shipCol = shipColors[entry.id % 4];
+            g2d.setColor(shipCol);
+            g2d.fillOval(boardX + 28, rowY + 5, 8, 8);
+
+            // Tên người chơi
+            String displayName = entry.name + (isMe ? " (YOU)" : "");
+            if (entry.hp <= 0) {
+                displayName += " [X]";
+            }
+            if (displayName.length() > 14) {
+                displayName = displayName.substring(0, 12) + "..";
+            }
+
+            if (isMe) {
+                g2d.setColor(new Color(80, 240, 255));
+            } else if (entry.hp <= 0) {
+                g2d.setColor(new Color(130, 140, 155));
+            } else if (isTopLeaderTied) {
+                g2d.setColor(new Color(255, 220, 140)); // Amber gold highlight for tied leaders
+            } else if (isSoloLeader) {
+                g2d.setColor(new Color(255, 235, 140)); // Bright gold for solo leader
+            } else {
+                g2d.setColor(new Color(230, 235, 245));
+            }
+            g2d.drawString(displayName, boardX + 42, rowY + 14);
+
+            // Số Kills bên phải
+            String killStr = String.valueOf(entry.score);
+            int killX = boardX + boardW - 24 - fm.stringWidth(killStr);
+            if (isTopLeaderTied) {
+                g2d.setColor(new Color(255, 185, 60));
+            } else if (entry.score > 0) {
+                g2d.setColor(new Color(255, 215, 0));
+            } else {
+                g2d.setColor(new Color(150, 165, 185));
+            }
+            g2d.drawString(killStr, killX, rowY + 14);
         }
     }
 
