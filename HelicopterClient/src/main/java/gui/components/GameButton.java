@@ -26,6 +26,12 @@ public class GameButton extends JButton {
         this(text, Style.CYAN);
     }
 
+    public GameButton(String text, Icon icon, Style style) {
+        super(text, icon);
+        this.style = style;
+        initButton();
+    }
+
     public GameButton(String text, Style style) {
         super(text);
         this.style = style;
@@ -172,20 +178,36 @@ public class GameButton extends JButton {
             g2.fillRoundRect(3, 3 + offset, w - 6, (h - 4) / 2, cornerRadius - 2, cornerRadius - 2);
         }
 
-        // 6. Vẽ Text hoặc Icon căn giữa
+        // 6. Vẽ Text và Icon căn giữa
+        Icon icon = getIcon();
+        String text = getText() != null ? getText() : "";
         FontMetrics fm = g2.getFontMetrics();
-        int textW = fm.stringWidth(getText());
+        int textW = !text.isEmpty() ? fm.stringWidth(text) : 0;
         int textH = fm.getAscent();
-        int tx = (w - textW) / 2;
-        int ty = (h + textH) / 2 - 2 + offset;
 
-        // Bóng chữ mờ
-        g2.setColor(new Color(0, 0, 0, 150));
-        g2.drawString(getText(), tx + 1, ty + 1);
+        int iconW = (icon != null) ? icon.getIconWidth() : 0;
+        int iconH = (icon != null) ? icon.getIconHeight() : 0;
+        int gap = (icon != null && !text.isEmpty()) ? 8 : 0;
+        int totalContentW = iconW + gap + textW;
 
-        // Chữ chính
-        g2.setColor(isEnabled() ? getForeground() : new Color(140, 145, 155));
-        g2.drawString(getText(), tx, ty);
+        int startX = (w - totalContentW) / 2;
+        if (icon != null) {
+            int iconY = (h - iconH) / 2 + offset;
+            icon.paintIcon(this, g2, startX, iconY);
+        }
+
+        if (!text.isEmpty()) {
+            int tx = startX + iconW + gap;
+            int ty = (h + textH) / 2 - 2 + offset;
+
+            // Bóng chữ mờ
+            g2.setColor(new Color(0, 0, 0, 160));
+            g2.drawString(text, tx + 1, ty + 1);
+
+            // Chữ chính
+            g2.setColor(isEnabled() ? getForeground() : new Color(140, 145, 155));
+            g2.drawString(text, tx, ty);
+        }
 
         g2.dispose();
     }
