@@ -1209,60 +1209,94 @@ public class GamePanel extends JPanel {
             int btnRematchX = boardX + (boardW - totalW) / 2;
             int btnLobbyX = btnRematchX + btnRematchW + gap;
 
-            // NÚT 1: CHƠI LẠI (REMATCH)
+            // NÚT 1: CHƠI LẠI (REMATCH) - PHONG CÁCH STARLIGHT
             if (rematchCountdown > 0) {
-                // Đang đếm ngược vào trận mới
-                g2d.setColor(new Color(255, 180, 0, 230));
-                g2d.fillRoundRect(btnRematchX, btnY, btnRematchW, btnH, 12, 12);
-                g2d.setColor(Color.WHITE);
-                g2d.setStroke(new BasicStroke(2.0f));
-                g2d.drawRoundRect(btnRematchX, btnY, btnRematchW, btnH, 12, 12);
+                // Đang đếm ngược vào trận mới (Amber Gold)
+                GradientPaint gpCd = new GradientPaint(btnRematchX, btnY, new Color(255, 185, 30), btnRematchX, btnY + btnH, new Color(195, 110, 5));
+                g2d.setPaint(gpCd);
+                g2d.fillRoundRect(btnRematchX, btnY, btnRematchW, btnH, 10, 10);
+                g2d.setColor(new Color(255, 225, 100));
+                g2d.setStroke(new BasicStroke(1.6f));
+                g2d.drawRoundRect(btnRematchX, btnY, btnRematchW, btnH, 10, 10);
 
-                g2d.setFont(new Font("Arial", Font.BOLD, 14));
+                drawButtonBrackets(g2d, btnRematchX, btnY, btnRematchW, btnH, new Color(255, 240, 150));
+
+                g2d.setFont(new Font("Segoe UI", Font.BOLD, 14));
                 g2d.setColor(Color.BLACK);
                 String cdText = "🚀 TRẬN MỚI TRONG " + rematchCountdown + "s...";
                 FontMetrics fmBtn = g2d.getFontMetrics();
                 g2d.drawString(cdText, btnRematchX + (btnRematchW - fmBtn.stringWidth(cdText)) / 2, btnY + 26);
             } else if (isRematchReady) {
-                // Bản thân đã sẵn sàng, chờ đối thủ
-                g2d.setColor(new Color(40, 160, 80, 230));
-                g2d.fillRoundRect(btnRematchX, btnY, btnRematchW, btnH, 12, 12);
-                g2d.setColor(new Color(120, 255, 160));
-                g2d.setStroke(new BasicStroke(2.0f));
-                g2d.drawRoundRect(btnRematchX, btnY, btnRematchW, btnH, 12, 12);
+                // Bản thân đã sẵn sàng, chờ đối thủ (Lime Green)
+                GradientPaint gpReady = new GradientPaint(btnRematchX, btnY, new Color(165, 215, 45), btnRematchX, btnY + btnH, new Color(110, 160, 20));
+                g2d.setPaint(gpReady);
+                g2d.fillRoundRect(btnRematchX, btnY, btnRematchW, btnH, 10, 10);
+                g2d.setColor(new Color(205, 255, 90));
+                g2d.setStroke(new BasicStroke(1.6f));
+                g2d.drawRoundRect(btnRematchX, btnY, btnRematchW, btnH, 10, 10);
 
-                g2d.setFont(new Font("Arial", Font.BOLD, 13));
+                drawButtonBrackets(g2d, btnRematchX, btnY, btnRematchW, btnH, new Color(225, 255, 130));
+
+                g2d.setFont(new Font("Segoe UI", Font.BOLD, 13));
                 g2d.setColor(Color.WHITE);
-                String readyText = "✅ ĐÃ SẴN SÀNG! ĐỢI ĐỐI THỦ...";
+                String readyText = "✓ ĐÃ SẴN SÀNG! ĐỢI ĐỐI THỦ...";
                 FontMetrics fmBtn = g2d.getFontMetrics();
                 g2d.drawString(readyText, btnRematchX + (btnRematchW - fmBtn.stringWidth(readyText)) / 2, btnY + 26);
             } else {
-                // Nút bấm Sẵn sàng chơi lại
-                g2d.setColor(new Color(220, 50, 50, 230));
-                g2d.fillRoundRect(btnRematchX, btnY, btnRematchW, btnH, 12, 12);
-                g2d.setColor(new Color(255, 200, 200));
-                g2d.setStroke(new BasicStroke(2.0f));
-                g2d.drawRoundRect(btnRematchX, btnY, btnRematchW, btnH, 12, 12);
+                // Nút bấm Sẵn sàng chơi lại (Starlight Coral Red-Orange)
+                GradientPaint gpReplay = new GradientPaint(btnRematchX, btnY, new Color(255, 95, 45), btnRematchX, btnY + btnH, new Color(195, 42, 16));
+                g2d.setPaint(gpReplay);
+                g2d.fillRoundRect(btnRematchX, btnY, btnRematchW, btnH, 10, 10);
+                g2d.setColor(new Color(255, 125, 75));
+                g2d.setStroke(new BasicStroke(1.6f));
+                g2d.drawRoundRect(btnRematchX, btnY, btnRematchW, btnH, 10, 10);
 
-                g2d.setFont(new Font("Arial", Font.BOLD, 13));
+                // Vệt sáng gương
+                g2d.setColor(new Color(255, 255, 255, 32));
+                g2d.fillRoundRect(btnRematchX + 2, btnY + 2, btnRematchW - 4, btnH / 2, 8, 8);
+
+                drawButtonBrackets(g2d, btnRematchX, btnY, btnRematchW, btnH, new Color(255, 165, 110));
+
+                g2d.setFont(new Font("Segoe UI", Font.BOLD, 13));
                 g2d.setColor(Color.WHITE);
-                String replayText = "⚔️ CHƠI LẠI HOẶC [R]";
+                String replayText = "⚔ CHƠI LẠI HOẶC [R]";
                 FontMetrics fmBtn = g2d.getFontMetrics();
                 g2d.drawString(replayText, btnRematchX + (btnRematchW - fmBtn.stringWidth(replayText)) / 2, btnY + 26);
             }
 
-            // NÚT 2: VỀ SẢNH CHỜ
-            g2d.setColor(new Color(45, 60, 90, 230));
-            g2d.fillRoundRect(btnLobbyX, btnY, btnLobbyW, btnH, 12, 12);
-            g2d.setColor(new Color(140, 180, 240));
-            g2d.setStroke(new BasicStroke(2.0f));
-            g2d.drawRoundRect(btnLobbyX, btnY, btnLobbyW, btnH, 12, 12);
+            // NÚT 2: VỀ SẢNH CHỜ (Dark Slate Glass)
+            GradientPaint gpLobby = new GradientPaint(btnLobbyX, btnY, new Color(60, 75, 102), btnLobbyX, btnY + btnH, new Color(34, 42, 60));
+            g2d.setPaint(gpLobby);
+            g2d.fillRoundRect(btnLobbyX, btnY, btnLobbyW, btnH, 10, 10);
+            g2d.setColor(new Color(110, 140, 185));
+            g2d.setStroke(new BasicStroke(1.6f));
+            g2d.drawRoundRect(btnLobbyX, btnY, btnLobbyW, btnH, 10, 10);
 
-            g2d.setFont(new Font("Arial", Font.BOLD, 13));
+            drawButtonBrackets(g2d, btnLobbyX, btnY, btnLobbyW, btnH, new Color(135, 165, 215));
+
+            g2d.setFont(new Font("Segoe UI", Font.BOLD, 13));
             g2d.setColor(Color.WHITE);
             String lobbyText = "🚪 VỀ SẢNH";
             FontMetrics fmLobby = g2d.getFontMetrics();
             g2d.drawString(lobbyText, btnLobbyX + (btnLobbyW - fmLobby.stringWidth(lobbyText)) / 2, btnY + 26);
         }
+    }
+
+    private void drawButtonBrackets(Graphics2D g2, int x, int y, int w, int h, Color col) {
+        g2.setColor(col);
+        g2.setStroke(new BasicStroke(1.8f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        int bl = 8;
+        // Top-left ┌
+        g2.drawLine(x + 2, y + 2 + bl, x + 2, y + 2);
+        g2.drawLine(x + 2, y + 2, x + 2 + bl, y + 2);
+        // Top-right ┐
+        g2.drawLine(x + w - 3, y + 2 + bl, x + w - 3, y + 2);
+        g2.drawLine(x + w - 3, y + 2, x + w - 3 - bl, y + 2);
+        // Bottom-left └
+        g2.drawLine(x + 2, y + h - 3 - bl, x + 2, y + h - 3);
+        g2.drawLine(x + 2, y + h - 3, x + 2 + bl, y + h - 3);
+        // Bottom-right ┘
+        g2.drawLine(x + w - 3, y + h - 3 - bl, x + w - 3, y + h - 3);
+        g2.drawLine(x + w - 3, y + h - 3, x + w - 3 - bl, y + h - 3);
     }
 }

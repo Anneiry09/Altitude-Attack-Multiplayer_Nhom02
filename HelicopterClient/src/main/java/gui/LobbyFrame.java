@@ -6,6 +6,7 @@ import gui.components.GameButton;
 import gui.components.GameCardPanel;
 import gui.components.GameScrollBarUI;
 import gui.components.GameTextField;
+import gui.components.StarfieldPanel;
 import model.OnlinePlayer;
 import model.RoomInfo;
 import model.RoomMember;
@@ -38,6 +39,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
     private JPanel rootPanel;
 
     // View 1: Đăng nhập / Kết nối
+    private StarfieldPanel loginView;
     private GameTextField txtServerIP;
     private GameTextField txtPlayerName;
     private GameButton btnConnect;
@@ -125,7 +127,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         rootPanel = new JPanel(rootCardLayout);
 
         // Khởi tạo các View chính
-        JPanel loginView = createLoginView();
+        loginView = createLoginView();
         JPanel dashboardView = createDashboardView();
         gameContainer = new JPanel(new BorderLayout());
 
@@ -138,77 +140,67 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
     }
 
     // ==========================================
-    // 1. MÀN HÌNH ĐĂNG NHẬP / KẾT NỐI (SCI-FI LOGIN)
+    // 1. MÀN HÌNH ĐĂNG NHẬP / KẾT NỐI (STARLIGHT SPACE LOGIN)
     // ==========================================
-    private JPanel createLoginView() {
-        JPanel panel = new JPanel(null);
-        panel.setBackground(new Color(11, 15, 26));
+    private StarfieldPanel createLoginView() {
+        StarfieldPanel panel = new StarfieldPanel(null);
 
-        // Tiêu đề game lớn với hiệu ứng Neon
-        JLabel lblTitle = new JLabel("HELICOPTER COMBAT", SwingConstants.CENTER);
-        lblTitle.setFont(new Font("Arial", Font.BOLD, 30));
-        lblTitle.setForeground(new Color(0, 225, 255));
-        lblTitle.setBounds(150, 48, 580, 42);
-        panel.add(lblTitle);
-
-        JLabel lblSub = new JLabel("ĐẤU TRƯỜNG BẮN MÁY BAY KHÔNG GIAN ONLINE", SwingConstants.CENTER);
-        lblSub.setFont(new Font("Arial", Font.BOLD, 12));
-        lblSub.setForeground(new Color(140, 175, 220));
-        lblSub.setBounds(150, 92, 580, 22);
-        panel.add(lblSub);
-
-        // Card đăng nhập kính mờ chính giữa
+        // Card đăng nhập kính mờ chính giữa mang phong cách Starlight Sci-Fi
         GameCardPanel formBox = new GameCardPanel(null);
-        formBox.setBackgroundColor(new Color(18, 24, 42, 240));
-        formBox.setBorderColor(new Color(45, 75, 120));
-        formBox.setAccentColor(new Color(0, 210, 255));
-        formBox.setBounds(255, 140, 370, 340);
+        formBox.setBackgroundColor(new Color(12, 16, 28, 235));
+        formBox.setBorderColor(new Color(85, 45, 25));
+        formBox.setAccentColor(new Color(255, 115, 45)); // Quầng sáng cam Starlight
+        formBox.setCornerBrackets(true);
+        formBox.setBounds(255, 142, 370, 350);
 
         JLabel lblFormTitle = new JLabel("KẾT NỐI MÁY CHỦ", SwingConstants.CENTER);
-        lblFormTitle.setFont(new Font("Arial", Font.BOLD, 15));
-        lblFormTitle.setForeground(new Color(100, 215, 255));
-        lblFormTitle.setBounds(20, 20, 330, 25);
+        lblFormTitle.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        lblFormTitle.setForeground(new Color(255, 145, 80));
+        lblFormTitle.setBounds(20, 22, 330, 25);
         formBox.add(lblFormTitle);
 
         JLabel lblIP = new JLabel("Địa chỉ Server IP:");
-        lblIP.setForeground(new Color(200, 215, 240));
-        lblIP.setFont(new Font("Arial", Font.PLAIN, 12));
-        lblIP.setBounds(30, 58, 200, 20);
+        lblIP.setForeground(new Color(215, 225, 245));
+        lblIP.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblIP.setBounds(30, 60, 200, 20);
         formBox.add(lblIP);
 
         txtServerIP = new GameTextField("localhost", "Ví dụ: 127.0.0.1");
-        txtServerIP.setBounds(30, 80, 310, 38);
+        txtServerIP.setFocusColor(new Color(255, 120, 50));
+        txtServerIP.setBounds(30, 82, 310, 38);
         formBox.add(txtServerIP);
 
         JLabel lblName = new JLabel("Tên phi công (Player Name):");
-        lblName.setForeground(new Color(200, 215, 240));
-        lblName.setFont(new Font("Arial", Font.PLAIN, 12));
-        lblName.setBounds(30, 130, 200, 20);
+        lblName.setForeground(new Color(215, 225, 245));
+        lblName.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblName.setBounds(30, 132, 200, 20);
         formBox.add(lblName);
 
         txtPlayerName = new GameTextField("", "Nhập tên phi công của bạn...");
-        txtPlayerName.setBounds(30, 152, 310, 38);
+        txtPlayerName.setFocusColor(new Color(255, 120, 50));
+        txtPlayerName.setBounds(30, 154, 310, 38);
         formBox.add(txtPlayerName);
 
-        btnConnect = new GameButton("▶ VÀO SẢNH CHỜ", GameButton.Style.CYAN);
-        btnConnect.setFont(new Font("Arial", Font.BOLD, 14));
-        btnConnect.setBounds(30, 215, 310, 44);
+        // Nút kết nối phong cách Starlight Coral Red-Orange với góc ngoặc phát quang
+        btnConnect = new GameButton("▶ VÀO SẢNH CHIẾN ĐẤU", GameButton.Style.CORAL);
+        btnConnect.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnConnect.setBounds(30, 218, 310, 46);
         btnConnect.addActionListener(e -> onConnectClicked());
         formBox.add(btnConnect);
 
         lblConnectStatus = new JLabel("Nhập tên để sẵn sàng cất cánh", SwingConstants.CENTER);
-        lblConnectStatus.setFont(new Font("Arial", Font.ITALIC, 12));
-        lblConnectStatus.setForeground(new Color(150, 165, 190));
-        lblConnectStatus.setBounds(20, 275, 330, 25);
+        lblConnectStatus.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+        lblConnectStatus.setForeground(new Color(160, 175, 205));
+        lblConnectStatus.setBounds(20, 285, 330, 25);
         formBox.add(lblConnectStatus);
 
         panel.add(formBox);
 
-        // Footer version
-        JLabel lblVer = new JLabel("Helicopter Combat v2.4 • Multiplayer UDP/TCP Arena", SwingConstants.CENTER);
-        lblVer.setFont(new Font("Arial", Font.PLAIN, 11));
-        lblVer.setForeground(new Color(75, 95, 125));
-        lblVer.setBounds(200, 550, 480, 20);
+        // Footer version công nghệ
+        JLabel lblVer = new JLabel("Altitude Attack • Starlight Space Arena v2.5 • UDP/TCP Network", SwingConstants.CENTER);
+        lblVer.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        lblVer.setForeground(new Color(95, 110, 140));
+        lblVer.setBounds(200, 555, 480, 20);
         panel.add(lblVer);
 
         return panel;
@@ -236,6 +228,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
                     currentServerIP = ip;
                     myPlayerName = name;
                     lblPlayerProfile.setText("● Phi công: " + name + " (ID: #" + tcpClient.getMyPlayerId() + ")");
+                    if (loginView != null) loginView.stopAnimation();
                     rootCardLayout.show(rootPanel, "DASHBOARD");
                     showLobbyView();
                 } else {
@@ -339,6 +332,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
 
     private void onDisconnectClicked() {
         tcpClient.disconnect();
+        if (loginView != null) loginView.startAnimation();
         rootCardLayout.show(rootPanel, "LOGIN");
         btnConnect.setEnabled(true);
         lblConnectStatus.setText("Đã ngắt kết nối.");
