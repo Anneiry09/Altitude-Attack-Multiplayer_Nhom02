@@ -53,8 +53,9 @@ public class StarfieldPanel extends JPanel {
     private AWTEventListener awtMouseListener = null;
 
     // Tiêu đề hiển thị
-    private String titleText = "ALTITUDE ATTACK";
-    private String subtitleText = "SPACE HELICOPTER MULTIPLAYER ARENA • GIAO THỨC UDP/TCP";
+    private String titleText = "HELICOPTER COMBAT";
+    private String subtitleText = "MULTIPLAYER SCI-FI ARENA • UDP/TCP NETWORK";
+    private boolean showTitleBanner = true;
 
     public StarfieldPanel() {
         this(null);
@@ -67,6 +68,7 @@ public class StarfieldPanel extends JPanel {
         initStars();
         initMouseInteractions();
         initTimer();
+        startAnimation();
     }
 
     private void initStars() {
@@ -284,22 +286,32 @@ public class StarfieldPanel extends JPanel {
         repaint();
     }
 
+    public void setShowTitleBanner(boolean showTitleBanner) {
+        this.showTitleBanner = showTitleBanner;
+        repaint();
+    }
+
+    public boolean isShowTitleBanner() {
+        return showTitleBanner;
+    }
+
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
+        int w = getWidth();
+        int h = getHeight();
+        if (w <= 0 || h <= 0) return;
+
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-
-        int w = getWidth();
-        int h = getHeight();
 
         // 1. NỀN VŨ TRỤ SÂU THẲM (DEEP SPACE BACKGROUND)
         g2.setColor(new Color(7, 10, 16));
         g2.fillRect(0, 0, w, h);
 
         // 2. QUẦNG SÁNG TINH VÂN (NEBULA GLOW) Ở GÓC TRÊN BÊN PHẢI (Mô phỏng Starlight UI)
-        float nebRadius = Math.max(w, h) * 0.72f;
+        float nebRadius = Math.max(Math.max(w, h) * 0.72f, 10.0f);
         Point2D nebCenter = new Point2D.Float(w * 0.88f, h * 0.12f);
         RadialGradientPaint nebulaOrange = new RadialGradientPaint(
             nebCenter,
@@ -319,7 +331,7 @@ public class StarfieldPanel extends JPanel {
         Point2D nebCenter2 = new Point2D.Float(w * 0.12f, h * 0.88f);
         RadialGradientPaint nebulaBlue = new RadialGradientPaint(
             nebCenter2,
-            Math.max(w, h) * 0.55f,
+            Math.max(Math.max(w, h) * 0.55f, 10.0f),
             new float[]{0.0f, 0.5f, 1.0f},
             new Color[]{
                 new Color(18, 35, 65, 80),
@@ -343,8 +355,10 @@ public class StarfieldPanel extends JPanel {
             }
         }
 
-        // 4. VẼ KHUNG TIÊU ĐỀ STARLIGHT SCI-FI ĐẲNG CẤP Ở ĐỈNH MÀN HÌNH
-        drawStarlightTitleBanner(g2, w);
+        // 4. VẼ KHUNG TIÊU ĐỀ STARLIGHT SCI-FI ĐẲNG CẤP Ở ĐỈNH MÀN HÌNH (Nếu bật)
+        if (showTitleBanner) {
+            drawStarlightTitleBanner(g2, w);
+        }
 
         g2.dispose();
     }

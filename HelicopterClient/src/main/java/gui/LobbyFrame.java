@@ -46,6 +46,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
     private JLabel lblConnectStatus;
 
     // View 2: Dashboard (Sảnh chính & Phòng)
+    private StarfieldPanel dashboardView;
     private CardLayout contentCardLayout;
     private JPanel contentPanel;
     private JLabel lblPlayerProfile;
@@ -128,7 +129,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
 
         // Khởi tạo các View chính
         loginView = createLoginView();
-        JPanel dashboardView = createDashboardView();
+        dashboardView = createDashboardView();
         gameContainer = new JPanel(new BorderLayout());
 
         rootPanel.add(loginView, "LOGIN");
@@ -137,6 +138,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
 
         add(rootPanel);
         rootCardLayout.show(rootPanel, "LOGIN");
+        if (loginView != null) loginView.startAnimation();
     }
 
     // ==========================================
@@ -233,6 +235,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
                     playerNamesMap.put(myPlayerId, name);
                     lblPlayerProfile.setText("PILOT: " + name + " (#" + myPlayerId + ")");
                     if (loginView != null) loginView.stopAnimation();
+                    if (dashboardView != null) dashboardView.startAnimation();
                     rootCardLayout.show(rootPanel, "DASHBOARD");
                     showLobbyView();
                 } else {
@@ -248,13 +251,13 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
     // ==========================================
     // 2. DASHBOARD CHÍNH (HEADER + SẢNH / PHÒNG)
     // ==========================================
-    private JPanel createDashboardView() {
-        JPanel dashboard = new JPanel(new BorderLayout());
-        dashboard.setBackground(new Color(11, 15, 26));
+    private StarfieldPanel createDashboardView() {
+        StarfieldPanel dashboard = new StarfieldPanel(new BorderLayout());
+        dashboard.setShowTitleBanner(false);
 
         // Top Navigation Header
         JPanel header = new JPanel(new BorderLayout());
-        header.setBackground(new Color(16, 22, 38));
+        header.setBackground(new Color(16, 22, 38, 220));
         header.setBorder(new EmptyBorder(10, 18, 10, 18));
 
         // Profile bên trái
@@ -301,7 +304,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         // Content Area (Switch giữa Sảnh chính và Phòng)
         contentCardLayout = new CardLayout();
         contentPanel = new JPanel(contentCardLayout);
-        contentPanel.setBackground(new Color(11, 15, 26));
+        contentPanel.setOpaque(false);
 
         JPanel lobbyView = createLobbyContentView();
         JPanel roomView = createRoomContentView();
@@ -339,6 +342,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
 
     private void onDisconnectClicked() {
         tcpClient.disconnect();
+        if (dashboardView != null) dashboardView.stopAnimation();
         if (loginView != null) loginView.startAnimation();
         rootCardLayout.show(rootPanel, "LOGIN");
         btnConnect.setEnabled(true);
@@ -375,7 +379,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
     // ==========================================
     private JPanel createLobbyContentView() {
         JPanel panel = new JPanel(new GridLayout(1, 2, 16, 0));
-        panel.setBackground(new Color(11, 15, 26));
+        panel.setOpaque(false);
         panel.setBorder(new EmptyBorder(14, 18, 16, 18));
 
         // Cột Trái: Danh sách người chơi Online
@@ -531,7 +535,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
     // ==========================================
     private JPanel createRoomContentView() {
         JPanel panel = new JPanel(new BorderLayout(0, 14));
-        panel.setBackground(new Color(11, 15, 26));
+        panel.setOpaque(false);
         panel.setBorder(new EmptyBorder(14, 18, 16, 18));
 
         // Header thông tin phòng
@@ -682,6 +686,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
             lblConnectStatus.setText("Disconnected: " + reason);
             lblConnectStatus.setForeground(Color.RED);
             btnConnect.setEnabled(true);
+            if (dashboardView != null) dashboardView.stopAnimation();
             if (loginView != null) loginView.startAnimation();
             rootCardLayout.show(rootPanel, "LOGIN");
         });
@@ -951,6 +956,8 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
             }
 
             lblCountdownBanner.setText("");
+            if (loginView != null) loginView.stopAnimation();
+            if (dashboardView != null) dashboardView.stopAnimation();
             rootCardLayout.show(rootPanel, "GAME");
 
             if (gamePanel == null) {
@@ -982,6 +989,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
             // Tiếp tục phát BGM khi quay lại sảnh
             SoundManager.getInstance().resumeBGM();
 
+            if (dashboardView != null) dashboardView.startAnimation();
             rootCardLayout.show(rootPanel, "DASHBOARD");
             showLobbyView();
             revalidate();
