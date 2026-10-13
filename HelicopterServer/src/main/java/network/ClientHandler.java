@@ -99,6 +99,16 @@ public class ClientHandler extends Thread {
                         boolean acc = "ACCEPT".equalsIgnoreCase(parts[1]);
                         server.handleInviteResponse(this, rId, acc);
                     } catch (Exception ignored) {}
+                } else if (message.startsWith("ROOM_CHAT:")) {
+                    String chatText = message.substring("ROOM_CHAT:".length());
+                    if (currentRoom != null && !chatText.trim().isEmpty()) {
+                        currentRoom.broadcast("ROOM_CHAT:" + this.playerId + "," + this.playerName + "," + chatText);
+                    }
+                } else if (message.startsWith("ROOM_TYPING:")) {
+                    String isTyping = message.substring("ROOM_TYPING:".length());
+                    if (currentRoom != null) {
+                        currentRoom.broadcast("ROOM_TYPING:" + this.playerId + "," + this.playerName + "," + isTyping);
+                    }
                 }
             }
         } catch (IOException e) {

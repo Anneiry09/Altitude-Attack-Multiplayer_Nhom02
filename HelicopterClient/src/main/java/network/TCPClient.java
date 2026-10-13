@@ -41,6 +41,10 @@ public class TCPClient {
         void onCountdown(int seconds);
         void onCountdownCancelled();
         void onGameStart();
+
+        // Chat phòng
+        void onRoomChat(byte senderId, String senderName, String message);
+        void onRoomTyping(byte senderId, String senderName, boolean isTyping);
     }
 
     public void setListener(TCPListener listener) {
@@ -113,6 +117,24 @@ public class TCPClient {
                             if (listener != null) listener.onCountdownCancelled();
                         } else if (message.equals("START_GAME")) {
                             if (listener != null) listener.onGameStart();
+                        } else if (message.startsWith("ROOM_CHAT:")) {
+                            String body = message.substring("ROOM_CHAT:".length());
+                            String[] parts = body.split(",", 3);
+                            if (parts.length >= 3 && listener != null) {
+                                byte sId = Byte.parseByte(parts[0]);
+                                String sName = parts[1];
+                                String cMsg = parts[2];
+                                listener.onRoomChat(sId, sName, cMsg);
+                            }
+                        } else if (message.startsWith("ROOM_TYPING:")) {
+                            String body = message.substring("ROOM_TYPING:".length());
+                            String[] parts = body.split(",", 3);
+                            if (parts.length >= 3 && listener != null) {
+                                byte sId = Byte.parseByte(parts[0]);
+                                String sName = parts[1];
+                                boolean typing = Boolean.parseBoolean(parts[2]);
+                                listener.onRoomTyping(sId, sName, typing);
+                            }
                         }
                     } catch (Exception parseEx) {
                         System.err.println("[TCP Client] Error processing message: " + message + " - " + parseEx.getMessage());
@@ -252,6 +274,14 @@ public class TCPClient {
 
     public void sendRename(String newName) {
         sendRaw("RENAME:" + newName);
+    }
+
+    public void sendRoomChat(String message) {
+        sendRaw("ROOM_CHAT:" + message);
+    }
+
+    public void sendRoomTyping(boolean isTyping) {
+        sendRaw("ROOM_TYPING:" + isTyping);
     }
 
     private final Object writeLock = new Object();

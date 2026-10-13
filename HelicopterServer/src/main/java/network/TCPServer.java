@@ -123,6 +123,7 @@ public class TCPServer {
 
         Room room = roomManager.createRoom(roomName, client, udpServer, this);
         System.out.println("[Room] Player #" + client.getPlayerId() + " created Room #" + room.getId() + " (" + room.getName() + ")");
+        broadcastLobbyData();
     }
 
     public synchronized void joinRoom(ClientHandler client, int roomId) {
@@ -141,6 +142,12 @@ public class TCPServer {
         }
 
         if (client.getCurrentRoom() != null) {
+            if (client.getCurrentRoom().getId() == roomId) {
+                // Đã ở trong phòng này rồi, gửi lại dữ liệu phòng để client chắc chắn hiển thị đúng
+                client.setStatus(ClientHandler.PlayerStatus.IN_ROOM);
+                room.broadcastRoomData();
+                return;
+            }
             client.getCurrentRoom().removeMember(client);
         }
         if (matchmakingQueue.contains(client)) {
