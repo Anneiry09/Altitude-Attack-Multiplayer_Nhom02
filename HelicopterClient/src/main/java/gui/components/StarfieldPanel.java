@@ -2,6 +2,9 @@ package gui.components;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.AWTEventListener;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Point2D;
 import java.util.ArrayList;
@@ -12,7 +15,13 @@ import java.util.Random;
  * StarfieldPanel - Màn hình nền không gian vũ trụ phong cách Starlight Sci-Fi
  * Tái hiện chính xác tông màu và hiệu ứng từ các hình ảnh Starlight-Mobile-UI:
  * - Nền đen vũ trụ sâu thẳm với quầng sáng tinh vân (Nebula) màu cam/hổ phách ở góc trên bên phải
- * - Hiệu ứng các ngôi sao rơi từ từ với độ sâu thị sai (Parallax Depth) và nhấp nháy đa sắc
+ * - Hiệu ứng Falling Stars Particle System rơi liên tục theo nhịp 60 FPS
+ * - Tương tác chuột 2D đa hướng linh hoạt:
+ *   + Di chuột qua phải/trái: các ngôi sao trôi nghiêng theo hướng ngang của chuột.
+ *   + Di chuột lên trên: tạo lực nâng nhẹ đẩy các ngôi sao trôi ngược lên trên trong khi vẫn giữ xu hướng rơi.
+ *   + Di chuột xuống dưới: tăng tốc độ rơi cuốn theo chuyển động chuột.
+ *   + Khi ngừng di chuột: toàn bộ lực đẩy theo các hướng giảm dần mượt mà (smooth decay)
+ *     và các ngôi sao trở về tốc độ rơi thẳng đứng bình thường.
  * - Khung tiêu đề công nghệ (Tech Frame) viền Neon phát sáng đặc trưng
  */
 public class StarfieldPanel extends JPanel {
@@ -33,6 +42,16 @@ public class StarfieldPanel extends JPanel {
     private Timer animationTimer;
     private final int starCount = 140;
 
+    // Tương tác chuột 2D và độ trôi quán tính (2D Mouse Drift Physics)
+    private int lastScreenX = -1;
+    private int lastScreenY = -1;
+    private float currentDriftVelocityX = 0.0f;
+    private float targetDriftVelocityX = 0.0f;
+    private float currentDriftVelocityY = 0.0f;
+    private float targetDriftVelocityY = 0.0f;
+    private long lastMouseMoveTime = 0;
+    private AWTEventListener awtMouseListener = null;
+
     // Tiêu đề hiển thị
     private String titleText = "ALTITUDE ATTACK";
     private String subtitleText = "SPACE HELICOPTER MULTIPLAYER ARENA • GIAO THỨC UDP/TCP";
@@ -46,6 +65,7 @@ public class StarfieldPanel extends JPanel {
         setOpaque(true);
         setBackground(new Color(7, 10, 16));
         initStars();
+        initMouseInteractions();
         initTimer();
     }
 
@@ -85,9 +105,53 @@ public class StarfieldPanel extends JPanel {
             s.twinkleSpeed = 0.008f + random.nextFloat() * 0.025f;
             s.twinkleUp = random.nextBoolean();
             s.color = palette[random.nextInt(palette.length)];
-            s.driftX = (random.nextFloat() - 0.5f) * 0.15f;
+            s.driftX = (random.nextFloat() - 0.5f) * 0.12f;
             stars.add(s);
         }
+    }
+
+    private void initMouseInteractions() {
+        // Lắng nghe chuột trực tiếp trên StarfieldPanel
+        addMouseMotionListener(new MouseMotionAdapter() {
+            @Override
+            public void mouseMoved(MouseEvent e) {
+                handleMouseMove(e.getXOnScreen(), e.getYOnScreen());
+            }
+
+            @Override
+            public void mouseDragged(MouseEvent e) {
+                handleMouseMove(e.getXOnScreen(), e.getYOnScreen());
+            }
+        });
+    }
+
+    /**
+     * Xử lý chuyển động chuột 2D: Tính toán cả xung lực ngang (dx) và xung lực dọc (dy)
+     * - dy < 0 (chuột đẩy lên): tạo xung lực âm đẩy các ngôi sao nhẹ nhàng trôi ngược lên trên
+     * - dy > 0 (chuột kéo xuống): tạo xung lực dương đẩy các ngôi sao rơi nhanh hơn
+     * - dx: tạo xung lực trôi ngang sang trái/phải
+     */
+    private void handleMouseMove(int screenX, int screenY) {
+        if (lastScreenX != -1 && lastScreenY != -1) {
+            int dx = screenX - lastScreenX;
+            int dy = screenY - lastScreenY;
+
+            if (dx != 0 || dy != 0) {
+                // Xung lực ngang nhẹ nhàng (tinh chỉnh chậm và êm ái)
+                float impulseX = Math.max(-2.0f, Math.min(2.0f, dx * 0.055f));
+                targetDriftVelocityX += impulseX;
+                targetDriftVelocityX = Math.max(-1.8f, Math.min(1.8f, targetDriftVelocityX));
+
+                // Xung lực dọc nhẹ nhàng (đẩy/kéo chậm và tự nhiên)
+                float impulseY = Math.max(-2.0f, Math.min(2.0f, dy * 0.055f));
+                targetDriftVelocityY += impulseY;
+                targetDriftVelocityY = Math.max(-1.8f, Math.min(1.8f, targetDriftVelocityY));
+
+                lastMouseMoveTime = System.currentTimeMillis();
+            }
+        }
+        lastScreenX = screenX;
+        lastScreenY = screenY;
     }
 
     private void initTimer() {
@@ -111,23 +175,80 @@ public class StarfieldPanel extends JPanel {
     public void addNotify() {
         super.addNotify();
         startAnimation();
+
+        // Đăng ký AWTEventListener toàn cục để bắt được chuyển động chuột ngay cả khi chuột
+        // đang rê trên các component con như ô nhập liệu (GameTextField) hay nút bấm (GameButton)
+        try {
+            if (awtMouseListener == null) {
+                awtMouseListener = event -> {
+                    if (!isShowing()) return;
+                    if (event instanceof MouseEvent me) {
+                        int id = me.getID();
+                        if (id == MouseEvent.MOUSE_MOVED || id == MouseEvent.MOUSE_DRAGGED) {
+                            handleMouseMove(me.getXOnScreen(), me.getYOnScreen());
+                        }
+                    }
+                };
+                Toolkit.getDefaultToolkit().addAWTEventListener(awtMouseListener, AWTEvent.MOUSE_MOTION_EVENT_MASK);
+            }
+        } catch (Exception ignored) {}
     }
 
     @Override
     public void removeNotify() {
         super.removeNotify();
         stopAnimation();
+
+        // Hủy listener khi panel không còn hiển thị
+        try {
+            if (awtMouseListener != null) {
+                Toolkit.getDefaultToolkit().removeAWTEventListener(awtMouseListener);
+                awtMouseListener = null;
+            }
+        } catch (Exception ignored) {}
     }
 
     private void updateStars() {
         int w = getWidth() > 0 ? getWidth() : 880;
         int h = getHeight() > 0 ? getHeight() : 640;
+        long now = System.currentTimeMillis();
 
+        // 1. XỬ LÝ QUÁN TÍNH CHUỘT 2D (Triệt tiêu êm dịu khi chuột dừng):
+        if (now - lastMouseMoveTime > 40) {
+            targetDriftVelocityX *= 0.85f;
+            if (Math.abs(targetDriftVelocityX) < 0.01f) {
+                targetDriftVelocityX = 0.0f;
+            }
+
+            targetDriftVelocityY *= 0.85f;
+            if (Math.abs(targetDriftVelocityY) < 0.01f) {
+                targetDriftVelocityY = 0.0f;
+            }
+        }
+
+        // Nội suy mượt mà vận tốc hiện tại bám theo target (Smooth Damping)
+        currentDriftVelocityX += (targetDriftVelocityX - currentDriftVelocityX) * 0.14f;
+        if (Math.abs(currentDriftVelocityX) < 0.005f) {
+            currentDriftVelocityX = 0.0f;
+        }
+
+        currentDriftVelocityY += (targetDriftVelocityY - currentDriftVelocityY) * 0.14f;
+        if (Math.abs(currentDriftVelocityY) < 0.005f) {
+            currentDriftVelocityY = 0.0f;
+        }
+
+        // 2. CẬP NHẬT TỌA ĐỘ VÀ TRẠNG THÁI TỪNG NGÔI SAO
         for (Star s : stars) {
-            s.y += s.speed;
-            s.x += s.driftX;
+            // Hệ số thị sai chiều sâu 3D êm ái
+            float depthFactor = Math.max(0.35f, s.speed * 0.70f);
 
-            // Nhấp nháy nhẹ
+            // Vận tốc Y: Tốc độ rơi tự nhiên + Lực đẩy/kéo nhẹ theo chiều dọc của chuột
+            s.y += s.speed + (currentDriftVelocityY * depthFactor);
+
+            // Vận tốc X: Độ trôi tự nhiên + Độ trôi êm ái theo chuột
+            s.x += s.driftX + (currentDriftVelocityX * depthFactor);
+
+            // Nhấp nháy nhẹ nhàng
             if (s.twinkleUp) {
                 s.currentAlpha += s.twinkleSpeed;
                 if (s.currentAlpha >= Math.min(1.0f, s.baseAlpha + 0.3f)) {
@@ -140,13 +261,18 @@ public class StarfieldPanel extends JPanel {
                 }
             }
 
-            // Reset khi rơi hết màn hình
-            if (s.y > h + 5) {
+            // Bao phủ biên dọc (Wrap-around khi rơi hết đáy hoặc bị đẩy ngược lên trên mép đỉnh)
+            if (s.y > h + 15) {
                 s.y = -random.nextFloat() * 15;
                 s.x = random.nextFloat() * w;
+            } else if (s.y < -20) {
+                s.y = h + random.nextFloat() * 15;
+                s.x = random.nextFloat() * w;
             }
-            if (s.x < -10) s.x = w + 5;
-            if (s.x > w + 10) s.x = -5;
+
+            // Bao phủ biên ngang (Wrap-around ngang khi sao bị lệch)
+            if (s.x < -20) s.x = w + 15;
+            if (s.x > w + 20) s.x = -15;
         }
 
         repaint();
@@ -204,7 +330,7 @@ public class StarfieldPanel extends JPanel {
         g2.setPaint(nebulaBlue);
         g2.fillRect(0, 0, w, h);
 
-        // 3. VẼ HỆ THỐNG CÁC NGÔI SAO RƠI TỪ TỪ
+        // 3. VẼ HỆ THỐNG CÁC NGÔI SAO RƠI TỪ TỪ (KÈM HIỆU ỨNG TƯƠNG TÁC 2D THEO CHUỘT)
         for (Star s : stars) {
             int alpha = (int) (Math.max(0.0f, Math.min(1.0f, s.currentAlpha)) * 255);
             g2.setColor(new Color(s.color.getRed(), s.color.getGreen(), s.color.getBlue(), alpha));
