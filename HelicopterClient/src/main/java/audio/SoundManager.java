@@ -2,9 +2,17 @@ package audio;
 
 import javax.sound.sampled.*;
 import java.io.File;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class SoundManager {
     private static SoundManager instance;
+
+    private final ExecutorService sfxExecutor = Executors.newCachedThreadPool(r -> {
+        Thread t = new Thread(r, "SFX-Worker");
+        t.setDaemon(true);
+        return t;
+    });
 
     private SourceDataLine bgmLine;
     private Thread bgmThread;
@@ -194,31 +202,48 @@ public class SoundManager {
     // 2. HIỆU ỨNG ÂM THANH SFX (Sound Effects)
     // ==========================================
     public void playSfx(String fileName) {
-        if (isSfxMuted) return;
+        if (isSfxMuted || fileName == null) return;
 
-        new Thread(() -> {
+        sfxExecutor.submit(() -> {
             try {
                 File file = findSoundFile(fileName);
                 if (!file.exists()) return;
 
-                AudioInputStream ais = AudioSystem.getAudioInputStream(file);
-                AudioFormat baseFormat = ais.getFormat();
-                AudioFormat decodedFormat = new AudioFormat(
-                    AudioFormat.Encoding.PCM_SIGNED,
-                    baseFormat.getSampleRate(),
-                    16,
-                    baseFormat.getChannels(),
-                    baseFormat.getChannels() * 2,
-                    baseFormat.getSampleRate(),
-                    false
-                );
-                AudioInputStream pcmStream = AudioSystem.getAudioInputStream(decodedFormat, ais);
-                Clip clip = AudioSystem.getClip();
-                clip.open(pcmStream);
-                setClipGain(clip, sfxVolume);
-                clip.start();
+                try (AudioInputStream ais = AudioSystem.getAudioInputStream(file)) {
+                    AudioFormat baseFormat = ais.getFormat();
+                    AudioFormat decodedFormat = new AudioFormat(
+                        AudioFormat.Encoding.PCM_SIGNED,
+                        baseFormat.getSampleRate(),
+                        16,
+                        baseFormat.getChannels(),
+                        baseFormat.getChannels() * 2,
+                        baseFormat.getSampleRate(),
+                        false
+                    );
+
+                    AudioInputStream playStream = ais;
+                    AudioInputStream pcmStream = null;
+                    try {
+                        pcmStream = AudioSystem.getAudioInputStream(decodedFormat, ais);
+                        playStream = pcmStream;
+                    } catch (Exception ignored) {}
+
+                    Clip clip = AudioSystem.getClip();
+                    clip.addLineListener(event -> {
+                        if (event.getType() == LineEvent.Type.STOP) {
+                            clip.close();
+                        }
+                    });
+                    clip.open(playStream);
+                    setClipGain(clip, sfxVolume);
+                    clip.start();
+
+                    if (pcmStream != null) {
+                        try { pcmStream.close(); } catch (Exception ignored) {}
+                    }
+                }
             } catch (Exception ignored) {}
-        }).start();
+        });
     }
 
     public void playClick() {

@@ -458,7 +458,7 @@ public class GameEngine implements Runnable {
                                     }
                                     System.out.println("[GameEngine] Player #" + p.id + " Blue Orbit burned Player #" + enemy.id + " shield! Hits left: " + enemy.shieldHits);
                                 } else {
-                                    enemy.hp -= burnDmg;
+                                    enemy.hp = (byte) Math.max(0, enemy.hp - burnDmg);
                                     if (enemy.hp <= 0) {
                                         enemy.hp = 0;
                                         enemy.shieldType = 0;
@@ -504,7 +504,7 @@ public class GameEngine implements Runnable {
                             System.out.println("[GameEngine] Player #" + p.id + " shield absorbed hit! Remaining hits: " + p.shieldHits);
                         } else {
                             // Không có khiên: trừ máu
-                            p.hp -= damage;
+                            p.hp = (byte) Math.max(0, p.hp - damage);
                             if (p.hp <= 0) {
                                 p.hp = 0;
                                 p.shieldType = 0;

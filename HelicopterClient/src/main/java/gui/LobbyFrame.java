@@ -55,7 +55,6 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
     private JPanel contentPanel;
     private JLabel lblPlayerProfile;
     private GameButton btnQuickMatch;
-    private GameButton btnAudioToggle;
     private boolean isMatchmaking = false;
 
     // Sảnh chính (Lobby View)

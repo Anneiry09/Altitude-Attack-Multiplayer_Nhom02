@@ -6,10 +6,7 @@ import network.TCPClient;
 import network.UDPClient;
 
 import javax.imageio.ImageIO;
-import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.Clip;
+import audio.SoundManager;
 import javax.swing.JPanel;
 import java.awt.*;
 import java.awt.event.KeyAdapter;
@@ -303,38 +300,7 @@ public class GamePanel extends JPanel {
     }
 
     private void playSound(String fileName) {
-        new Thread(() -> {
-            try {
-                File soundFile = findAssetFile("assets/sounds/" + fileName);
-                if (soundFile.exists()) {
-                    AudioInputStream audioIn = AudioSystem.getAudioInputStream(soundFile);
-                    AudioFormat baseFormat = audioIn.getFormat();
-                    AudioFormat decodedFormat = new AudioFormat(
-                        AudioFormat.Encoding.PCM_SIGNED,
-                        baseFormat.getSampleRate(),
-                        16,
-                        baseFormat.getChannels(),
-                        baseFormat.getChannels() * 2,
-                        baseFormat.getSampleRate(),
-                        false
-                    );
-                    AudioInputStream pcmStream = AudioSystem.getAudioInputStream(decodedFormat, audioIn);
-                    Clip clip = AudioSystem.getClip();
-                    clip.open(pcmStream);
-                    clip.start();
-                }
-            } catch (Exception e) {
-                try {
-                    File soundFile = findAssetFile("assets/sounds/" + fileName);
-                    if (soundFile.exists()) {
-                        AudioInputStream audioIn = AudioSystem.getAudioInputStream(soundFile);
-                        Clip clip = AudioSystem.getClip();
-                        clip.open(audioIn);
-                        clip.start();
-                    }
-                } catch (Exception ignored) {}
-            }
-        }).start();
+        SoundManager.getInstance().playSfx(fileName);
     }
 
     private byte getMyWeaponBuff() {
