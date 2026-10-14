@@ -170,15 +170,15 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         formBox.setCornerBrackets(true);
         formBox.setBounds(255, 142, 370, 350);
 
-        JLabel lblFormTitle = new JLabel("SERVER CONNECTION", SwingConstants.CENTER);
-        lblFormTitle.setFont(UIAssetManager.getFont(13f));
+        JLabel lblFormTitle = new JLabel("KẾT NỐI MÁY CHỦ", SwingConstants.CENTER);
+        lblFormTitle.setFont(new Font(Font.DIALOG, Font.BOLD, 13));
         lblFormTitle.setForeground(new Color(255, 145, 80));
         lblFormTitle.setBounds(20, 22, 330, 25);
         formBox.add(lblFormTitle);
 
-        JLabel lblIP = new JLabel("Server IP:");
+        JLabel lblIP = new JLabel("Địa chỉ IP Máy chủ:");
         lblIP.setForeground(new Color(215, 225, 245));
-        lblIP.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblIP.setFont(new Font(Font.DIALOG, Font.BOLD, 12));
         lblIP.setBounds(30, 60, 200, 20);
         formBox.add(lblIP);
 
@@ -187,13 +187,13 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         txtServerIP.setBounds(30, 82, 310, 38);
         formBox.add(txtServerIP);
 
-        JLabel lblName = new JLabel("Pilot Call-sign (Name):");
+        JLabel lblName = new JLabel("Tên Phi công (Call-sign):");
         lblName.setForeground(new Color(215, 225, 245));
-        lblName.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblName.setFont(new Font(Font.DIALOG, Font.BOLD, 12));
         lblName.setBounds(30, 132, 200, 20);
         formBox.add(lblName);
 
-        txtPlayerName = new GameTextField("", "Enter your pilot call-sign...");
+        txtPlayerName = new GameTextField("", "Nhập tên phi công của bạn...");
         txtPlayerName.setFocusColor(new Color(255, 120, 50));
         txtPlayerName.setBounds(30, 154, 310, 38);
         formBox.add(txtPlayerName);
@@ -205,8 +205,8 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         btnConnect.addActionListener(e -> onConnectClicked());
         formBox.add(btnConnect);
 
-        lblConnectStatus = new JLabel("Ready for take-off", SwingConstants.CENTER);
-        lblConnectStatus.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+        lblConnectStatus = new JLabel("Sẵn sàng cất cánh...", SwingConstants.CENTER);
+        lblConnectStatus.setFont(new Font(Font.DIALOG, Font.ITALIC, 12));
         lblConnectStatus.setForeground(new Color(160, 175, 205));
         lblConnectStatus.setBounds(20, 285, 330, 25);
         formBox.add(lblConnectStatus);
@@ -215,7 +215,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
 
         // Footer version công nghệ
         JLabel lblVer = new JLabel("Helicopter Combat • Starlight Space Arena v2.5 • UDP/TCP Network", SwingConstants.CENTER);
-        lblVer.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        lblVer.setFont(new Font(Font.DIALOG, Font.PLAIN, 11));
         lblVer.setForeground(new Color(95, 110, 140));
         lblVer.setBounds(200, 555, 480, 20);
         panel.add(lblVer);
@@ -228,13 +228,13 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         String name = txtPlayerName.getText().trim();
 
         if (name.isEmpty()) {
-            lblConnectStatus.setText("[!] Please enter your pilot call-sign!");
+            lblConnectStatus.setText("[!] Vui lòng nhập tên phi công!");
             lblConnectStatus.setForeground(new Color(255, 100, 100));
             SoundManager.getInstance().playCancel();
             return;
         }
 
-        lblConnectStatus.setText("Connecting to server...");
+        lblConnectStatus.setText("Đang kết nối tới máy chủ...");
         lblConnectStatus.setForeground(new Color(255, 200, 80));
         btnConnect.setEnabled(false);
 
@@ -246,13 +246,13 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
                     myPlayerName = name;
                     myPlayerId = tcpClient.getMyPlayerId();
                     playerNamesMap.put(myPlayerId, name);
-                    lblPlayerProfile.setText("PILOT: " + name + " (#" + myPlayerId + ")");
+                    lblPlayerProfile.setText("● PHI CÔNG: " + name + " (#" + myPlayerId + ")");
                     if (loginView != null) loginView.stopAnimation();
                     if (dashboardView != null) dashboardView.startAnimation();
                     rootCardLayout.show(rootPanel, "DASHBOARD");
                     showLobbyView();
                 } else {
-                    lblConnectStatus.setText("[x] Failed to connect to " + ip);
+                    lblConnectStatus.setText("[x] Không thể kết nối tới " + ip);
                     lblConnectStatus.setForeground(new Color(255, 80, 80));
                     btnConnect.setEnabled(true);
                     SoundManager.getInstance().playCancel();
@@ -357,7 +357,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         if (loginView != null) loginView.startAnimation();
         rootCardLayout.show(rootPanel, "LOGIN");
         btnConnect.setEnabled(true);
-        lblConnectStatus.setText("Disconnected from server.");
+        lblConnectStatus.setText("Đã ngắt kết nối.");
         lblConnectStatus.setForeground(Color.GRAY);
         SoundManager.getInstance().playCancel();
     }
@@ -457,7 +457,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         JPanel volRow = new JPanel(new BorderLayout(10, 0));
         volRow.setOpaque(false);
         JLabel lblVolTitle = new JLabel("Âm lượng:");
-        lblVolTitle.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblVolTitle.setFont(new Font(Font.DIALOG, Font.BOLD, 12));
         lblVolTitle.setForeground(new Color(220, 230, 245));
         lblVolTitle.setPreferredSize(new Dimension(80, 26));
         volRow.add(lblVolTitle, BorderLayout.WEST);
@@ -466,7 +466,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         volSlider.setOpaque(false);
         volSlider.setUI(new GameSliderUI(volSlider));
         JLabel lblVolVal = new JLabel(volSlider.getValue() + "%", SwingConstants.RIGHT);
-        lblVolVal.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblVolVal.setFont(new Font(Font.DIALOG, Font.BOLD, 12));
         lblVolVal.setForeground(new Color(255, 180, 80));
         lblVolVal.setPreferredSize(new Dimension(45, 26));
 
@@ -497,14 +497,14 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         JPanel songRow = new JPanel(new BorderLayout(10, 0));
         songRow.setOpaque(false);
         JLabel lblSongTitle = new JLabel("Bản nhạc:");
-        lblSongTitle.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblSongTitle.setFont(new Font(Font.DIALOG, Font.BOLD, 12));
         lblSongTitle.setForeground(new Color(220, 230, 245));
         lblSongTitle.setPreferredSize(new Dimension(80, 26));
         songRow.add(lblSongTitle, BorderLayout.WEST);
 
         String[] bgmTracks = new String[]{"Darkwave.wav", "OverworldDay.wav"};
         JComboBox<String> comboTracks = new JComboBox<>(bgmTracks);
-        comboTracks.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        comboTracks.setFont(new Font(Font.DIALOG, Font.BOLD, 12));
         comboTracks.setBackground(new Color(18, 25, 45));
         comboTracks.setForeground(new Color(255, 205, 80));
         comboTracks.setSelectedItem(SoundManager.getInstance().getCurrentBgmFileName());
@@ -770,10 +770,10 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         table.setForeground(new Color(230, 240, 255));
         table.setGridColor(new Color(35, 50, 75, 120));
         table.setRowHeight(32);
-        table.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        table.setFont(new Font(Font.DIALOG, Font.PLAIN, 12));
         table.getTableHeader().setBackground(new Color(18, 26, 46, 215));
         table.getTableHeader().setForeground(new Color(255, 180, 80));
-        table.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
+        table.getTableHeader().setFont(new Font(Font.DIALOG, Font.BOLD, 12));
         table.setSelectionBackground(new Color(255, 120, 40, 160));
         table.setSelectionForeground(Color.WHITE);
         table.setShowVerticalLines(false);
@@ -788,11 +788,15 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
                 }
                 if (val != null) {
                     String str = val.toString();
-                    if (str.contains("Đang chờ") || str.contains("Rảnh") || str.contains("LOBBY") || str.contains("Sẵn sàng")) {
+                    if (str.contains("Đang chờ") || str.contains("Sảnh chờ") || str.contains("Rảnh") || str.contains("LOBBY") || str.contains("Sẵn sàng")) {
                         c.setForeground(new Color(80, 240, 140));
-                    } else if (str.contains("Trong trận") || str.contains("Bận") || str.contains("PLAYING") || str.contains("Đầy")) {
+                    } else if (str.contains("Trong trận") || str.contains("Đang thi đấu") || str.contains("Đang đấu") || str.contains("Bận") || str.contains("PLAYING") || str.contains("Đầy")) {
                         c.setForeground(new Color(255, 100, 100));
-                    } else if (str.contains("(BẠN)")) {
+                    } else if (str.contains("Đang ghép") || str.contains("Đếm ngược") || str.contains("MATCHMAKING")) {
+                        c.setForeground(new Color(255, 205, 80));
+                    } else if (str.contains("Trong phòng") || str.contains("ROOM")) {
+                        c.setForeground(new Color(100, 200, 255));
+                    } else if (str.contains("(BẠN)") || str.contains("(YOU)")) {
                         c.setForeground(new Color(255, 215, 0));
                     } else {
                         c.setForeground(isSelected ? Color.WHITE : new Color(210, 225, 245));
@@ -891,7 +895,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         txtChatMessages.setEditable(false);
         txtChatMessages.setOpaque(false);
         txtChatMessages.setBackground(new Color(0, 0, 0, 0));
-        txtChatMessages.setText("<html><body style='font-family: Segoe UI; font-size: 11px; color: #9AB0D0; margin: 4px;'>"
+        txtChatMessages.setText("<html><body style='font-family: Dialog, Segoe UI, sans-serif; font-size: 11px; color: #9AB0D0; margin: 4px;'>"
             + "<div style='color: #64FFDA;'>● Chào mừng vào phòng đấu! Hãy thảo luận chiến thuật cùng đồng đội.</div>"
             + "</body></html>");
         JScrollPane chatScrollPane = createStyledScrollPane(txtChatMessages);
@@ -909,7 +913,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         chatInputBar.add(btnEmoji, BorderLayout.WEST);
 
         txtChatInput = new GameTextField("", "Nhập tin nhắn chiến thuật...");
-        txtChatInput.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        txtChatInput.setFont(new Font(Font.DIALOG, Font.PLAIN, 12));
         txtChatInput.addActionListener(e -> sendChatMessage());
 
         // Theo dõi realtime khi người chơi gõ chữ
@@ -1133,7 +1137,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
     @Override
     public void onDisconnected(String reason) {
         SwingUtilities.invokeLater(() -> {
-            lblConnectStatus.setText("Disconnected: " + reason);
+            lblConnectStatus.setText("Mất kết nối: " + reason);
             lblConnectStatus.setForeground(Color.RED);
             btnConnect.setEnabled(true);
             if (dashboardView != null) dashboardView.stopAnimation();
@@ -1328,7 +1332,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
             lblTitle.setForeground(new Color(255, 160, 50));
             pnl.add(lblTitle, BorderLayout.NORTH);
 
-            JLabel lblMsg = new JLabel("<html><div style='text-align: center; color: #E0E8F5; font-family: Segoe UI;'>"
+            JLabel lblMsg = new JLabel("<html><div style='text-align: center; color: #E0E8F5; font-family: Dialog, Segoe UI, sans-serif;'>"
                 + "Phi công <b style='color: #FFD700; font-size: 15px;'>" + fromName + "</b> muốn mời bạn tham gia đội ngũ:<br><br>"
                 + "<span style='font-size: 14px; color: #64FFDA;'>◆ " + roomName + " (Phòng #" + roomId + ")</span>"
                 + "</div></html>", SwingConstants.CENTER);
@@ -1366,21 +1370,21 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
     @Override
     public void onInviteDeclined(String message) {
         SwingUtilities.invokeLater(() -> {
-            JOptionPane.showMessageDialog(this, message, "Invitation Declined", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, message, "Lời mời bị từ chối", JOptionPane.INFORMATION_MESSAGE);
         });
     }
 
     @Override
     public void onNotification(String message) {
         SwingUtilities.invokeLater(() -> {
-            JOptionPane.showMessageDialog(this, message, "Notice", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, message, "Thông báo", JOptionPane.INFORMATION_MESSAGE);
         });
     }
 
     @Override
     public void onError(String message) {
         SwingUtilities.invokeLater(() -> {
-            JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, message, "Lỗi", JOptionPane.WARNING_MESSAGE);
             SoundManager.getInstance().playCancel();
         });
     }
@@ -1394,7 +1398,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
             if (gamePanel != null) {
                 gamePanel.setCountdown(seconds);
             } else {
-                lblCountdownBanner.setText("ALL PILOTS READY! STARTING IN " + seconds + " SECONDS...");
+                lblCountdownBanner.setText("● TẤT CẢ ĐÃ SẴN SÀNG! VÀO TRẬN ĐẤU TRONG " + seconds + " GIÂY...");
             }
         });
     }
@@ -1406,7 +1410,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
             if (gamePanel != null) {
                 gamePanel.setCountdown(-1);
             } else {
-                lblCountdownBanner.setText("[!] Countdown cancelled - pilot changed readiness.");
+                lblCountdownBanner.setText("[!] Đã hủy đếm ngược do có người chơi thay đổi sẵn sàng.");
             }
         });
     }
@@ -1487,7 +1491,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
                 String updatedHtml = currentHtml.substring(0, bodyEndIdx) + chatLine + currentHtml.substring(bodyEndIdx);
                 txtChatMessages.setText(updatedHtml);
             } else {
-                txtChatMessages.setText("<html><body style='font-family: Segoe UI; font-size: 11px; margin: 4px;'>" + chatLine + "</body></html>");
+                txtChatMessages.setText("<html><body style='font-family: Dialog, Segoe UI, sans-serif; font-size: 11px; margin: 4px;'>" + chatLine + "</body></html>");
             }
             txtChatMessages.setCaretPosition(txtChatMessages.getDocument().getLength());
 

@@ -989,7 +989,7 @@ public class GamePanel extends JPanel {
             }
 
             // 4.4. TÊN PHI CÔNG HIỂN THỊ CĂN GIỮA PHÍA TRÊN PHI THUYỀN
-            g2d.setFont(new Font("Segoe UI", Font.BOLD, 11));
+            g2d.setFont(new Font(Font.DIALOG, Font.BOLD, 11));
             FontMetrics fmPilot = g2d.getFontMetrics();
             String pName = playerNames.getOrDefault(pid, "Pilot #" + pid);
             String pilotDisplay = (pid == myPlayerId ? "[YOU] " : "") + pName;
@@ -1186,12 +1186,12 @@ public class GamePanel extends JPanel {
                 sub = "Vinh danh " + winnerName + " đã xuất sắc giành chiến thắng với " + maxScore + " Kills!";
             }
 
-            g2d.setFont(new Font("Segoe UI", Font.BOLD, 20));
+            g2d.setFont(new Font(Font.DIALOG, Font.BOLD, 20));
             g2d.setColor(titleColor);
             FontMetrics fmTitle = g2d.getFontMetrics();
             g2d.drawString(title, boardX + (boardW - fmTitle.stringWidth(title)) / 2, boardY + 42);
 
-            g2d.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+            g2d.setFont(new Font(Font.DIALOG, Font.PLAIN, 12));
             g2d.setColor(new Color(185, 200, 225));
             FontMetrics fmSub = g2d.getFontMetrics();
             g2d.drawString(sub, boardX + (boardW - fmSub.stringWidth(sub)) / 2, boardY + 66);
@@ -1255,14 +1255,14 @@ public class GamePanel extends JPanel {
                     }
                 }
 
-                g2d.setFont(new Font("Segoe UI", Font.BOLD, 14));
+                g2d.setFont(new Font(Font.DIALOG, Font.BOLD, 14));
                 g2d.setColor(rankColor);
                 g2d.drawString(rankBadge, boardX + 45, rowY + 6);
 
                 // Tên người chơi
                 String name = playerNames.getOrDefault(pr.id, "Pilot #" + pr.id);
                 if (isMe) name += " (YOU)";
-                g2d.setFont(new Font("Segoe UI", Font.BOLD, 13));
+                g2d.setFont(new Font(Font.DIALOG, Font.BOLD, 13));
                 if (isMe) {
                     g2d.setColor(new Color(60, 240, 255));
                 } else if (isTopTied || isClearWinner) {
@@ -1283,7 +1283,7 @@ public class GamePanel extends JPanel {
                     killColor = new Color(255, 185, 60);
                 }
 
-                g2d.setFont(new Font("Segoe UI", Font.BOLD, 13));
+                g2d.setFont(new Font(Font.DIALOG, Font.BOLD, 13));
                 g2d.setColor(killColor);
                 g2d.drawString(killText, boardX + 300, rowY + 6);
 
@@ -1434,7 +1434,7 @@ public class GamePanel extends JPanel {
         g2d.fillRoundRect(boardX + 2, boardY + 2, boardW - 4, headerH - 2, 8, 8);
 
         // Tiêu đề: SCOREBOARD hoặc TIED BATTLE
-        g2d.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        g2d.setFont(new Font(Font.DIALOG, Font.BOLD, 11));
         if (isTopTied) {
             g2d.setColor(new Color(255, 185, 60)); // Amber hòa dẫn đầu
             g2d.drawString("🤝 TIED (" + maxScore + " KILLS)", boardX + 10, boardY + 17);
@@ -1447,12 +1447,12 @@ public class GamePanel extends JPanel {
         }
 
         // Cột: KILLS
-        g2d.setFont(new Font("Segoe UI", Font.BOLD, 10));
+        g2d.setFont(new Font(Font.DIALOG, Font.BOLD, 10));
         g2d.setColor(new Color(140, 175, 220));
         g2d.drawString("KILLS", boardX + boardW - 44, boardY + 17);
 
         // 6. Vẽ từng dòng người chơi
-        g2d.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        g2d.setFont(new Font(Font.DIALOG, Font.BOLD, 11));
         FontMetrics fm = g2d.getFontMetrics();
 
         // Bảng màu chấm tròn đại diện theo phi thuyền

@@ -13,10 +13,10 @@ public class OnlinePlayer {
 
     public String getStatusDisplay() {
         return switch (status) {
-            case "MATCHMAKING" -> "MATCHMAKING";
-            case "IN_ROOM" -> "IN ROOM";
-            case "IN_GAME" -> "IN BATTLE";
-            default -> "LOBBY";
+            case "MATCHMAKING" -> "● Đang ghép";
+            case "IN_ROOM" -> "● Trong phòng";
+            case "IN_GAME" -> "● Đang thi đấu";
+            default -> "● Sảnh chờ";
         };
     }
 }
