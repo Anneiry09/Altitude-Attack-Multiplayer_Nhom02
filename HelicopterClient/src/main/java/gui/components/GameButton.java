@@ -49,7 +49,7 @@ public class GameButton extends JButton {
         setFocusPainted(false);
         setBorderPainted(false);
         setOpaque(false);
-        setFont(new Font("Segoe UI", Font.BOLD, 13));
+        setFont(new Font(Font.DIALOG, Font.BOLD, 13));
         setForeground(Color.WHITE);
         setCursor(new Cursor(Cursor.HAND_CURSOR));
 
@@ -251,26 +251,39 @@ public class GameButton extends JButton {
         }
 
         // 7. VẼ NỘI DUNG CHỮ CĂN GIỮA VỚI BÓNG ĐỔ VÀ HÀO QUANG
-        FontMetrics fm = g2.getFontMetrics();
-        int textW = fm.stringWidth(getText());
+        String text = getText();
+        if (text == null) text = "";
+
+        Font btnFont = getFont();
+        if (btnFont == null) {
+            btnFont = new Font(Font.DIALOG, Font.BOLD, 13);
+        }
+        // Tự động kiểm tra và xử lý triệt để nếu font hiện tại không thể hiển thị ký tự (khối vuông tofu '□')
+        if (btnFont.canDisplayUpTo(text) != -1) {
+            btnFont = new Font(Font.DIALOG, btnFont.getStyle(), btnFont.getSize());
+        }
+        g2.setFont(btnFont);
+
+        FontMetrics fm = g2.getFontMetrics(btnFont);
+        int textW = fm.stringWidth(text);
         int textH = fm.getAscent();
         int tx = (w - textW) / 2;
         int ty = (h + textH) / 2 - 2 + offset;
 
         // Bóng chữ mờ đậm
         g2.setColor(new Color(0, 0, 0, 185));
-        g2.drawString(getText(), tx + 1, ty + 1);
+        g2.drawString(text, tx + 1, ty + 1);
 
         // Hào quang chữ khi hover
         if (isHovered && isEnabled()) {
             g2.setColor(new Color(cBorder.getRed(), cBorder.getGreen(), cBorder.getBlue(), 65));
-            g2.drawString(getText(), tx - 1, ty);
-            g2.drawString(getText(), tx + 1, ty);
+            g2.drawString(text, tx - 1, ty);
+            g2.drawString(text, tx + 1, ty);
         }
 
         // Chữ chính
         g2.setColor(isEnabled() ? getForeground() : new Color(135, 140, 150));
-        g2.drawString(getText(), tx, ty);
+        g2.drawString(text, tx, ty);
 
         g2.dispose();
     }

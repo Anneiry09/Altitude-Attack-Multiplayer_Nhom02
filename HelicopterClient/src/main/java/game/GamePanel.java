@@ -1221,7 +1221,7 @@ public class GamePanel extends JPanel {
 
                 drawButtonBrackets(g2d, btnRematchX, btnY, btnRematchW, btnH, new Color(255, 240, 150));
 
-                g2d.setFont(new Font("Segoe UI", Font.BOLD, 14));
+                g2d.setFont(new Font(Font.DIALOG, Font.BOLD, 14));
                 g2d.setColor(Color.BLACK);
                 String cdText = "🚀 TRẬN MỚI TRONG " + rematchCountdown + "s...";
                 FontMetrics fmBtn = g2d.getFontMetrics();
@@ -1237,7 +1237,7 @@ public class GamePanel extends JPanel {
 
                 drawButtonBrackets(g2d, btnRematchX, btnY, btnRematchW, btnH, new Color(225, 255, 130));
 
-                g2d.setFont(new Font("Segoe UI", Font.BOLD, 13));
+                g2d.setFont(new Font(Font.DIALOG, Font.BOLD, 13));
                 g2d.setColor(Color.WHITE);
                 String readyText = "✓ ĐÃ SẴN SÀNG! ĐỢI ĐỐI THỦ...";
                 FontMetrics fmBtn = g2d.getFontMetrics();
@@ -1257,7 +1257,7 @@ public class GamePanel extends JPanel {
 
                 drawButtonBrackets(g2d, btnRematchX, btnY, btnRematchW, btnH, new Color(255, 165, 110));
 
-                g2d.setFont(new Font("Segoe UI", Font.BOLD, 13));
+                g2d.setFont(new Font(Font.DIALOG, Font.BOLD, 13));
                 g2d.setColor(Color.WHITE);
                 String replayText = "⚔ CHƠI LẠI HOẶC [R]";
                 FontMetrics fmBtn = g2d.getFontMetrics();
@@ -1274,7 +1274,7 @@ public class GamePanel extends JPanel {
 
             drawButtonBrackets(g2d, btnLobbyX, btnY, btnLobbyW, btnH, new Color(135, 165, 215));
 
-            g2d.setFont(new Font("Segoe UI", Font.BOLD, 13));
+            g2d.setFont(new Font(Font.DIALOG, Font.BOLD, 13));
             g2d.setColor(Color.WHITE);
             String lobbyText = "🚪 VỀ SẢNH";
             FontMetrics fmLobby = g2d.getFontMetrics();
