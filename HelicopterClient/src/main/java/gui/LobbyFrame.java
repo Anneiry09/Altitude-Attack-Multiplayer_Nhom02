@@ -198,9 +198,9 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         txtPlayerName.setBounds(30, 154, 310, 38);
         formBox.add(txtPlayerName);
 
-        // Nút kết nối phong cách Starlight Coral Red-Orange với góc ngoặc phát quang và icon Kenney
-        btnConnect = new GameButton("ENTER LOBBY", UIAssetManager.getPlayIcon(16), GameButton.Style.CORAL);
-        btnConnect.setFont(UIAssetManager.getFont(13f));
+        // Nút kết nối phong cách Starlight Coral Red-Orange với góc ngoặc phát quang
+        btnConnect = new GameButton("▶ VÀO SẢNH CHIẾN ĐẤU", GameButton.Style.CORAL);
+        btnConnect.setFont(new Font(Font.DIALOG, Font.BOLD, 14));
         btnConnect.setBounds(30, 218, 310, 46);
         btnConnect.addActionListener(e -> onConnectClicked());
         formBox.add(btnConnect);
@@ -290,7 +290,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         profilePanel.setOpaque(false);
 
         lblPlayerProfile = new JLabel("● PHI CÔNG: ");
-        lblPlayerProfile.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        lblPlayerProfile.setFont(new Font(Font.DIALOG, Font.BOLD, 14));
         lblPlayerProfile.setForeground(new Color(80, 245, 160));
         profilePanel.add(lblPlayerProfile);
         header.add(profilePanel, BorderLayout.WEST);
@@ -301,13 +301,13 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
 
         // Nút Cài đặt (Bên trái nút Ghép trận nhanh)
         GameButton btnSettings = new GameButton("⚙ CÀI ĐẶT", GameButton.Style.DARK);
-        btnSettings.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnSettings.setFont(new Font(Font.DIALOG, Font.BOLD, 12));
         btnSettings.setPreferredSize(new Dimension(115, 36));
         btnSettings.addActionListener(e -> showSettingsDialog());
         headerRight.add(btnSettings);
 
         btnQuickMatch = new GameButton("⚡ GHÉP TRẬN NHANH", GameButton.Style.CORAL);
-        btnQuickMatch.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnQuickMatch.setFont(new Font(Font.DIALOG, Font.BOLD, 13));
         btnQuickMatch.setPreferredSize(new Dimension(210, 36));
         btnQuickMatch.addActionListener(e -> onQuickMatchClicked());
         headerRight.add(btnQuickMatch);
@@ -382,12 +382,12 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         headerPnl.setOpaque(false);
 
         JLabel lblTitle = new JLabel("⚙ CÀI ĐẶT HỆ THỐNG", SwingConstants.LEFT);
-        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        lblTitle.setFont(new Font(Font.DIALOG, Font.BOLD, 16));
         lblTitle.setForeground(new Color(255, 180, 80));
         headerPnl.add(lblTitle, BorderLayout.WEST);
 
         GameButton btnClose = new GameButton("✕", GameButton.Style.DARK);
-        btnClose.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnClose.setFont(new Font(Font.DIALOG, Font.BOLD, 13));
         btnClose.setPreferredSize(new Dimension(36, 32));
         btnClose.addActionListener(e -> dialog.dispose());
         headerPnl.add(btnClose, BorderLayout.EAST);
@@ -412,12 +412,12 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
 
         // Mục 1: ÂM NHẠC & ÂM LƯỢNG
         GameButton btnMusicMenu = new GameButton("♫ ÂM THANH & NHẠC NỀN ▶", GameButton.Style.CORAL);
-        btnMusicMenu.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnMusicMenu.setFont(new Font(Font.DIALOG, Font.BOLD, 13));
         btnMusicMenu.setPreferredSize(new Dimension(0, 48));
 
         // Mục 2: THÔNG TIN PHI CÔNG & ĐỔI TÊN
         GameButton btnProfileMenu = new GameButton("👤 ĐỔI TÊN PHI CÔNG (" + myPlayerName + ")", GameButton.Style.DARK);
-        btnProfileMenu.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnProfileMenu.setFont(new Font(Font.DIALOG, Font.BOLD, 13));
         btnProfileMenu.setPreferredSize(new Dimension(0, 48));
         btnProfileMenu.addActionListener(e -> {
             String newName = JOptionPane.showInputDialog(dialog, "Nhập tên phi công mới của bạn:", myPlayerName);
@@ -433,7 +433,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
 
         // Mục 3: ĐĂNG XUẤT
         GameButton btnLogoutMenu = new GameButton("✕ ĐĂNG XUẤT KHỎI SERVER", GameButton.Style.RED);
-        btnLogoutMenu.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnLogoutMenu.setFont(new Font(Font.DIALOG, Font.BOLD, 13));
         btnLogoutMenu.setPreferredSize(new Dimension(0, 48));
         btnLogoutMenu.addActionListener(e -> {
             dialog.dispose();
@@ -484,7 +484,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
             SoundManager.getInstance().isBgmMuted() ? "🔈 MỞ TIẾNG BGM" : "🔇 TẮT TIẾNG BGM",
             GameButton.Style.DARK
         );
-        btnMuteToggle.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnMuteToggle.setFont(new Font(Font.DIALOG, Font.BOLD, 12));
         btnMuteToggle.setPreferredSize(new Dimension(0, 34));
         btnMuteToggle.addActionListener(e -> {
             SoundManager.getInstance().toggleBgmMute();
@@ -519,7 +519,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
 
         // Nút quay lại menu chính
         GameButton btnBackToMain = new GameButton("◀ QUAY LẠI CÀI ĐẶT", GameButton.Style.DARK);
-        btnBackToMain.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnBackToMain.setFont(new Font(Font.DIALOG, Font.BOLD, 12));
         btnBackToMain.setPreferredSize(new Dimension(0, 36));
 
         pnlMusicDetails.add(musicControlsBox, BorderLayout.CENTER);
@@ -619,7 +619,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         leftPanel.setBorder(new EmptyBorder(12, 14, 12, 14));
 
         JLabel lblRoomsTitle = new JLabel("◆ PHÒNG ĐẤU HOẠT ĐỘNG (CHỌN ĐỂ VÀO PHÒNG)");
-        lblRoomsTitle.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblRoomsTitle.setFont(new Font(Font.DIALOG, Font.BOLD, 13));
         lblRoomsTitle.setForeground(new Color(255, 205, 80));
         leftPanel.add(lblRoomsTitle, BorderLayout.NORTH);
 
@@ -654,7 +654,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
 
         GameButton btnCreateRoom = new GameButton("+ TẠO PHÒNG MỚI", GameButton.Style.CORAL);
         btnCreateRoom.setPreferredSize(new Dimension(0, 38));
-        btnCreateRoom.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnCreateRoom.setFont(new Font(Font.DIALOG, Font.BOLD, 12));
         btnCreateRoom.addActionListener(e -> {
             String defaultRoomName = "Phòng của " + (myPlayerName != null && !myPlayerName.isEmpty() ? myPlayerName : "Phi Công");
             String rName = (String) JOptionPane.showInputDialog(
@@ -676,7 +676,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
 
         GameButton btnJoinRoom = new GameButton("▶ THAM CHIẾN", GameButton.Style.CORAL);
         btnJoinRoom.setPreferredSize(new Dimension(0, 38));
-        btnJoinRoom.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnJoinRoom.setFont(new Font(Font.DIALOG, Font.BOLD, 12));
         btnJoinRoom.addActionListener(e -> joinSelectedRoom());
         roomButtons.add(btnJoinRoom);
 
@@ -690,7 +690,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         rightPanel.setBorder(new EmptyBorder(12, 14, 12, 14));
 
         JLabel lblOnlineTitle = new JLabel("● PHI CÔNG TRỰC TUYẾN");
-        lblOnlineTitle.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblOnlineTitle.setFont(new Font(Font.DIALOG, Font.BOLD, 13));
         lblOnlineTitle.setForeground(new Color(255, 205, 80));
         rightPanel.add(lblOnlineTitle, BorderLayout.NORTH);
 
@@ -720,7 +720,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
 
         GameButton btnInviteSelected = new GameButton("✉ MỜI PHI CÔNG ĐÃ CHỌN", GameButton.Style.CORAL);
         btnInviteSelected.setPreferredSize(new Dimension(0, 38));
-        btnInviteSelected.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnInviteSelected.setFont(new Font(Font.DIALOG, Font.BOLD, 12));
         btnInviteSelected.addActionListener(e -> inviteSelectedPlayer());
         rightPanel.add(btnInviteSelected, BorderLayout.SOUTH);
 
@@ -835,19 +835,19 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         JPanel headerInfo = new JPanel(new GridLayout(2, 1, 0, 3));
         headerInfo.setOpaque(false);
         lblRoomTitle = new JLabel("◆ PHÒNG: [Đang tải...]");
-        lblRoomTitle.setFont(new Font("Segoe UI", Font.BOLD, 17));
+        lblRoomTitle.setFont(new Font(Font.DIALOG, Font.BOLD, 17));
         lblRoomTitle.setForeground(new Color(255, 215, 80));
         headerInfo.add(lblRoomTitle);
 
         lblRoomHost = new JLabel("★ Chỉ huy phòng: [Đang tải...]");
-        lblRoomHost.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblRoomHost.setFont(new Font(Font.DIALOG, Font.PLAIN, 12));
         lblRoomHost.setForeground(new Color(180, 210, 245));
         headerInfo.add(lblRoomHost);
         roomHeader.add(headerInfo, BorderLayout.CENTER);
 
         // Nút bấm xổ ra danh sách mời phi công online
         GameButton btnOpenInviteDialog = new GameButton("✉ MỜI PHI CÔNG ONLINE", GameButton.Style.CORAL);
-        btnOpenInviteDialog.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnOpenInviteDialog.setFont(new Font(Font.DIALOG, Font.BOLD, 12));
         btnOpenInviteDialog.setPreferredSize(new Dimension(195, 36));
         btnOpenInviteDialog.addActionListener(e -> showQuickInviteDialog());
         roomHeader.add(btnOpenInviteDialog, BorderLayout.EAST);
@@ -875,12 +875,12 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         JPanel chatHeaderPnl = new JPanel(new BorderLayout(8, 0));
         chatHeaderPnl.setOpaque(false);
         JLabel lblChatTitle = new JLabel("💬 KÊNH CHAT CHIẾN THUẬT");
-        lblChatTitle.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblChatTitle.setFont(new Font(Font.DIALOG, Font.BOLD, 13));
         lblChatTitle.setForeground(new Color(100, 220, 255));
         chatHeaderPnl.add(lblChatTitle, BorderLayout.WEST);
 
         lblTypingStatus = new JLabel("", SwingConstants.RIGHT);
-        lblTypingStatus.setFont(new Font("Segoe UI", Font.ITALIC, 11));
+        lblTypingStatus.setFont(new Font(Font.DIALOG, Font.ITALIC, 11));
         lblTypingStatus.setForeground(new Color(255, 185, 80));
         chatHeaderPnl.add(lblTypingStatus, BorderLayout.EAST);
         chatCard.add(chatHeaderPnl, BorderLayout.NORTH);
@@ -903,7 +903,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
 
         // Nút Icon biểu cảm (Emoji Selector)
         GameButton btnEmoji = new GameButton("☺", GameButton.Style.DARK);
-        btnEmoji.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        btnEmoji.setFont(new Font(Font.DIALOG, Font.BOLD, 15));
         btnEmoji.setPreferredSize(new Dimension(38, 36));
         btnEmoji.addActionListener(e -> showEmojiPopup(btnEmoji));
         chatInputBar.add(btnEmoji, BorderLayout.WEST);
@@ -923,7 +923,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
 
         // Nút Gửi tin nhắn
         GameButton btnSendChat = new GameButton("GỬI", GameButton.Style.CORAL);
-        btnSendChat.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnSendChat.setFont(new Font(Font.DIALOG, Font.BOLD, 12));
         btnSendChat.setPreferredSize(new Dimension(70, 36));
         btnSendChat.addActionListener(e -> sendChatMessage());
         chatInputBar.add(btnSendChat, BorderLayout.EAST);
@@ -938,7 +938,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         roomBottom.setOpaque(false);
 
         lblCountdownBanner = new JLabel("", SwingConstants.CENTER);
-        lblCountdownBanner.setFont(new Font("Segoe UI", Font.BOLD, 17));
+        lblCountdownBanner.setFont(new Font(Font.DIALOG, Font.BOLD, 17));
         lblCountdownBanner.setForeground(new Color(255, 215, 0));
         roomBottom.add(lblCountdownBanner, BorderLayout.NORTH);
 
@@ -946,7 +946,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         actionBtns.setOpaque(false);
 
         btnReadyToggle = new GameButton("✓ SẴN SÀNG CHIẾN ĐẤU", GameButton.Style.GREEN);
-        btnReadyToggle.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        btnReadyToggle.setFont(new Font(Font.DIALOG, Font.BOLD, 15));
         btnReadyToggle.setPreferredSize(new Dimension(0, 44));
         btnReadyToggle.addActionListener(e -> {
             isMyReady = !isMyReady;
@@ -956,7 +956,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         actionBtns.add(btnReadyToggle);
 
         btnLeaveRoom = new GameButton("✕ RỜI PHÒNG CHIẾN", GameButton.Style.RED);
-        btnLeaveRoom.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        btnLeaveRoom.setFont(new Font(Font.DIALOG, Font.BOLD, 15));
         btnLeaveRoom.setPreferredSize(new Dimension(0, 44));
         btnLeaveRoom.addActionListener(e -> {
             tcpClient.sendLeaveRoom();
@@ -1044,13 +1044,13 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         JPanel head = new JPanel(new BorderLayout());
         head.setOpaque(false);
         JLabel title = new JLabel("✉ MỜI PHI CÔNG TRỰC TUYẾN");
-        title.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        title.setFont(new Font(Font.DIALOG, Font.BOLD, 14));
         title.setForeground(new Color(255, 205, 80));
         head.add(title, BorderLayout.WEST);
 
         GameButton btnClose = new GameButton("✕", GameButton.Style.DARK);
         btnClose.setPreferredSize(new Dimension(32, 28));
-        btnClose.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnClose.setFont(new Font(Font.DIALOG, Font.BOLD, 12));
         btnClose.addActionListener(e -> dialog.dispose());
         head.add(btnClose, BorderLayout.EAST);
         card.add(head, BorderLayout.NORTH);
@@ -1059,13 +1059,13 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         inviteList.setOpaque(false);
         inviteList.setBackground(new Color(10, 15, 26, 180));
         inviteList.setForeground(Color.WHITE);
-        inviteList.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        inviteList.setFont(new Font(Font.DIALOG, Font.PLAIN, 13));
         inviteList.setFixedCellHeight(30);
         card.add(createStyledScrollPane(inviteList), BorderLayout.CENTER);
 
         GameButton btnSend = new GameButton("✉ GỬI LỜI MỜI CHIẾN ĐẤU", GameButton.Style.CORAL);
         btnSend.setPreferredSize(new Dimension(0, 38));
-        btnSend.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnSend.setFont(new Font(Font.DIALOG, Font.BOLD, 13));
         btnSend.addActionListener(e -> {
             int idx = inviteList.getSelectedIndex();
             if (idx >= 0 && inviteIndexToPid.containsKey(idx)) {
@@ -1091,18 +1091,18 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
             emptySlot.setBorder(new EmptyBorder(6, 8, 6, 8));
 
             JLabel lblSlotNum = new JLabel("PLAYER " + (i + 1), SwingConstants.CENTER);
-            lblSlotNum.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            lblSlotNum.setFont(new Font(Font.DIALOG, Font.BOLD, 12));
             lblSlotNum.setForeground(new Color(75, 95, 125));
             emptySlot.add(lblSlotNum, BorderLayout.NORTH);
 
             JLabel emptyLabel = new JLabel("⬚ TRỐNG", SwingConstants.CENTER);
             emptyLabel.setForeground(new Color(65, 85, 115));
-            emptyLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
+            emptyLabel.setFont(new Font(Font.DIALOG, Font.BOLD, 13));
             emptySlot.add(emptyLabel, BorderLayout.CENTER);
 
             JLabel lblEmptyState = new JLabel("—", SwingConstants.CENTER);
             lblEmptyState.setForeground(new Color(60, 75, 105));
-            lblEmptyState.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+            lblEmptyState.setFont(new Font(Font.DIALOG, Font.PLAIN, 11));
             emptySlot.add(lblEmptyState, BorderLayout.SOUTH);
 
             slotsPanel.add(emptySlot);
@@ -1239,7 +1239,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
                         String hostIcon = m.isHost ? "👑 " : "";
                         String youTag = (m.id == myPlayerId) ? " (YOU)" : "";
                         JLabel lblName = new JLabel(hostIcon + m.name + youTag, SwingConstants.CENTER);
-                        lblName.setFont(new Font("Segoe UI", Font.BOLD, 13));
+                        lblName.setFont(new Font(Font.DIALOG, Font.BOLD, 13));
                         lblName.setForeground(m.isHost ? new Color(255, 215, 0) : Color.WHITE);
                         slot.add(lblName, BorderLayout.NORTH);
 
@@ -1252,7 +1252,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
 
                         // 3. Phía dưới: Trạng thái READY / UNREADY
                         JLabel lblState = new JLabel(m.isReady ? "● READY" : "○ UNREADY", SwingConstants.CENTER);
-                        lblState.setFont(new Font("Segoe UI", Font.BOLD, 12));
+                        lblState.setFont(new Font(Font.DIALOG, Font.BOLD, 12));
                         lblState.setForeground(m.isReady ? new Color(80, 245, 140) : new Color(255, 160, 70));
                         slot.add(lblState, BorderLayout.SOUTH);
                     } else {
@@ -1261,18 +1261,18 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
                         slot.setAccentColor(null);
 
                         JLabel lblSlotNum = new JLabel("PLAYER " + (i + 1), SwingConstants.CENTER);
-                        lblSlotNum.setFont(new Font("Segoe UI", Font.BOLD, 12));
+                        lblSlotNum.setFont(new Font(Font.DIALOG, Font.BOLD, 12));
                         lblSlotNum.setForeground(new Color(75, 95, 125));
                         slot.add(lblSlotNum, BorderLayout.NORTH);
 
                         JLabel emptyLabel = new JLabel("⬚ TRỐNG", SwingConstants.CENTER);
                         emptyLabel.setForeground(new Color(65, 85, 115));
-                        emptyLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
+                        emptyLabel.setFont(new Font(Font.DIALOG, Font.BOLD, 13));
                         slot.add(emptyLabel, BorderLayout.CENTER);
 
                         JLabel lblEmptyState = new JLabel("—", SwingConstants.CENTER);
                         lblEmptyState.setForeground(new Color(60, 75, 105));
-                        lblEmptyState.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+                        lblEmptyState.setFont(new Font(Font.DIALOG, Font.PLAIN, 11));
                         slot.add(lblEmptyState, BorderLayout.SOUTH);
                     }
                     slotsPanel.add(slot);
@@ -1324,7 +1324,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
             pnl.setBorder(new EmptyBorder(18, 22, 18, 22));
 
             JLabel lblTitle = new JLabel("✉ LỜI MỜI THAM CHIẾN PHÒNG ĐẤU", SwingConstants.CENTER);
-            lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 15));
+            lblTitle.setFont(new Font(Font.DIALOG, Font.BOLD, 15));
             lblTitle.setForeground(new Color(255, 160, 50));
             pnl.add(lblTitle, BorderLayout.NORTH);
 
@@ -1339,7 +1339,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
 
             GameButton btnAccept = new GameButton("✓ CHẤP NHẬN", GameButton.Style.GREEN);
             btnAccept.setPreferredSize(new Dimension(0, 40));
-            btnAccept.setFont(new Font("Segoe UI", Font.BOLD, 13));
+            btnAccept.setFont(new Font(Font.DIALOG, Font.BOLD, 13));
             btnAccept.addActionListener(e -> {
                 dialog.dispose();
                 tcpClient.sendInviteResponse(roomId, true);
@@ -1347,7 +1347,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
 
             GameButton btnDecline = new GameButton("✕ TỪ CHỐI", GameButton.Style.DARK);
             btnDecline.setPreferredSize(new Dimension(0, 40));
-            btnDecline.setFont(new Font("Segoe UI", Font.BOLD, 13));
+            btnDecline.setFont(new Font(Font.DIALOG, Font.BOLD, 13));
             btnDecline.addActionListener(e -> {
                 dialog.dispose();
                 tcpClient.sendInviteResponse(roomId, false);

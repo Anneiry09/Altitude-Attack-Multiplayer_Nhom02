@@ -55,7 +55,7 @@ public class GameButton extends JButton {
         setFocusPainted(false);
         setBorderPainted(false);
         setOpaque(false);
-        setFont(new Font("Segoe UI", Font.BOLD, 13));
+        setFont(new Font(Font.DIALOG, Font.BOLD, 13));
         setForeground(Color.WHITE);
         setCursor(new Cursor(Cursor.HAND_CURSOR));
 
@@ -258,9 +258,20 @@ public class GameButton extends JButton {
 
         // 7. VẼ NỘI DUNG (ICON VÀ CHỮ CĂN GIỮA VỚI BÓNG ĐỔ VÀ HÀO QUANG)
         Icon icon = getIcon();
-        String text = getText() != null ? getText() : "";
+        String text = getText();
+        if (text == null) text = "";
 
-        FontMetrics fm = g2.getFontMetrics();
+        Font btnFont = getFont();
+        if (btnFont == null) {
+            btnFont = new Font(Font.DIALOG, Font.BOLD, 13);
+        }
+        // Tự động kiểm tra và xử lý triệt để nếu font hiện tại không thể hiển thị ký tự (khối vuông tofu '□')
+        if (btnFont.canDisplayUpTo(text) != -1) {
+            btnFont = new Font(Font.DIALOG, btnFont.getStyle(), btnFont.getSize());
+        }
+        g2.setFont(btnFont);
+
+        FontMetrics fm = g2.getFontMetrics(btnFont);
         int textW = !text.isEmpty() ? fm.stringWidth(text) : 0;
         int textH = fm.getAscent();
 
