@@ -1,0 +1,29 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Chạy Server (ServerMain)",
+            "request": "launch",
+            "mainClass": "main.ServerMain",
+            "projectName": "HelicopterServer",
+            "cwd": "${workspaceFolder}/HelicopterServer"
+        },
+        {
+            "type": "java",
+            "name": "Chạy Client 1 (ClientMain)",
+            "request": "launch",
+            "mainClass": "main.ClientMain",
+            "projectName": "HelicopterClient",
+            "cwd": "${workspaceFolder}/HelicopterClient"
+        },
+        {
+            "type": "java",
+            "name": "Chạy Client 2 (ClientMain)",
+            "request": "launch",
+            "mainClass": "main.ClientMain",
+            "projectName": "HelicopterClient",
+            "cwd": "${workspaceFolder}/HelicopterClient"
+        }
+    ]
+}

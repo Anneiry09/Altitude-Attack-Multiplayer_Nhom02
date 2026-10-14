@@ -79,4 +79,5 @@ public class ClientHandler extends Thread {
     public byte getPlayerId() { return playerId; }
     public String getPlayerName() { return playerName; }
     public boolean isReady() { return isReady; }
+    public void setReady(boolean ready) { this.isReady = ready; }
 }

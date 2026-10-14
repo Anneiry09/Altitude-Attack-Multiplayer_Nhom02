@@ -20,6 +20,7 @@ public class TCPServer {
 
     public TCPServer(game.GameEngine engine) {
         this.engine = engine;
+        this.engine.setTCPServer(this);
     }
 
     public void start() {
@@ -71,7 +72,8 @@ public class TCPServer {
                         Thread.sleep(1000);
                     }
                     
-                    // Nạp người chơi vào GameEngine
+                    // Reset GameEngine trước khi nạp người chơi vào ván mới
+                    engine.reset();
                     for(ClientHandler c : clients) {
                         engine.addPlayer(c.getPlayerId());
                     }
@@ -89,6 +91,75 @@ public class TCPServer {
                 }
             });
             countdownThread.start();
+        }
+    }
+
+    // Kết thúc ván đấu sau 60s: tổng hợp điểm, tìm người thắng và broadcast GAME_OVER
+    public synchronized void onMatchFinished(java.util.concurrent.ConcurrentHashMap<Byte, game.Player> players) {
+        byte winnerId = -1;
+        String winnerName = "Không có";
+        int maxScore = -1;
+        boolean isDraw = false;
+
+        class PlayerRank {
+            byte id;
+            String name;
+            int score;
+            PlayerRank(byte id, String name, int score) {
+                this.id = id; this.name = name; this.score = score;
+            }
+        }
+        java.util.List<PlayerRank> ranks = new java.util.ArrayList<>();
+
+        for (ClientHandler client : clients) {
+            byte pid = client.getPlayerId();
+            game.Player p = players.get(pid);
+            int score = (p != null) ? p.score : 0;
+            ranks.add(new PlayerRank(pid, client.getPlayerName(), score));
+
+            if (score > maxScore) {
+                maxScore = score;
+                winnerId = pid;
+                winnerName = client.getPlayerName();
+                isDraw = false;
+            } else if (score == maxScore && maxScore >= 0) {
+                isDraw = true;
+            }
+        }
+
+        // Sắp xếp bảng xếp hạng điểm giảm dần
+        ranks.sort((a, b) -> Integer.compare(b.score, a.score));
+
+        if (isDraw && ranks.size() > 1 && ranks.get(0).score == ranks.get(1).score) {
+            winnerId = -2; // -2 đại diện cho kết quả Hòa
+            winnerName = "HÒA (TIE)";
+        }
+
+        StringBuilder sb = new StringBuilder("GAME_OVER:");
+        sb.append(winnerId).append(",").append(winnerName);
+        for (PlayerRank pr : ranks) {
+            sb.append(";").append(pr.id).append(",").append(pr.name).append(",").append(pr.score);
+        }
+
+        String finalResult = sb.toString();
+        System.out.println("[TCP Server] Broadcast Match Results: " + finalResult);
+        broadcastMessage(finalResult);
+
+        // Reset trạng thái sẵn sàng của tất cả Client
+        for (ClientHandler client : clients) {
+            client.setReady(false);
+        }
+    }
+
+    // Xử lý khi Client bị ngắt kết nối do quá 5 giây timeout Heartbeat
+    public void handlePlayerTimeout(byte playerId) {
+        for (ClientHandler client : clients) {
+            if (client.getPlayerId() == playerId) {
+                System.out.println("[TCP Server] Disconnecting timed out player #" + playerId);
+                client.sendMessage("TIMEOUT:Mất kết nối Heartbeat quá 5 giây.");
+                client.disconnect();
+                break;
+            }
         }
     }
 
@@ -115,6 +186,7 @@ public class TCPServer {
 
     public void removeClient(ClientHandler client) {
         clients.remove(client);
+        engine.removePlayer(client.getPlayerId());
         System.out.println("[TCP Server] Player #" + client.getPlayerId() + " disconnected. Total: " + clients.size());
         broadcastPlayerList();
     }

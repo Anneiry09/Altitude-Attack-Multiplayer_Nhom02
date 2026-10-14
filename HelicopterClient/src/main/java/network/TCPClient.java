@@ -17,9 +17,10 @@ public class TCPClient {
     public interface TCPListener {
         void onPlayerListUpdated(String data);
         void onDisconnected(String reason);
-        void onCountdown(int seconds);         // Mới: Báo đếm ngược
-        void onCountdownCancelled();           // Mới: Hủy đếm ngược
-        void onGameStart();                    // Mới: Bắt đầu game
+        void onCountdown(int seconds);         // Báo đếm ngược
+        void onCountdownCancelled();           // Hủy đếm ngược
+        void onGameStart();                    // Bắt đầu game
+        void onGameOver(String leaderboardData); // Kết thúc game: Bảng điểm
     }
 
     public void setListener(TCPListener listener) {
@@ -62,6 +63,10 @@ public class TCPClient {
                         if (listener != null) listener.onGameStart();
                     } else if (message.equals("CANCEL_COUNTDOWN")) {
                         if (listener != null) listener.onCountdownCancelled();
+                    } else if (message.startsWith("GAME_OVER:") && listener != null) {
+                        listener.onGameOver(message.substring("GAME_OVER:".length()));
+                    } else if (message.startsWith("TIMEOUT:") && listener != null) {
+                        listener.onDisconnected(message.substring("TIMEOUT:".length()));
                     }
                 }
             } catch (IOException e) {

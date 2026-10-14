@@ -5,6 +5,7 @@ import java.nio.ByteBuffer;
 public class StatePacket {
     public int tick;
     public byte playerCount;
+    public short remainingTime; // Thời gian còn lại của ván đấu (giây)
 
     public byte[] playerIds = new byte[4];
     public float[] playerXs = new float[4];
@@ -22,6 +23,7 @@ public class StatePacket {
         ByteBuffer buffer = ByteBuffer.allocate(512);
         buffer.putInt(tick);
         buffer.put(playerCount);
+        buffer.putShort(remainingTime);
 
         for (int i = 0; i < playerCount; i++) {
             buffer.put(playerIds[i]);
@@ -49,6 +51,7 @@ public class StatePacket {
         StatePacket packet = new StatePacket();
         packet.tick = buffer.getInt();
         packet.playerCount = buffer.get();
+        packet.remainingTime = buffer.getShort();
 
         for (int i = 0; i < packet.playerCount; i++) {
             packet.playerIds[i] = buffer.get();
