@@ -53,8 +53,8 @@ public class StarfieldPanel extends JPanel {
     private AWTEventListener awtMouseListener = null;
 
     // Tiêu đề hiển thị
-    private String titleText = "HELICOPTER COMBAT";
-    private String subtitleText = "MULTIPLAYER SCI-FI ARENA • UDP/TCP NETWORK";
+    private String titleText = "ALTITUDE ATTACK";
+    private String subtitleText = "SPACE HELICOPTER MULTIPLAYER ARENA • GIAO THỨC UDP/TCP";
     private boolean showTitleBanner = true;
 
     public StarfieldPanel() {
@@ -286,15 +286,14 @@ public class StarfieldPanel extends JPanel {
         repaint();
     }
 
-    public void setShowTitleBanner(boolean showTitleBanner) {
-        this.showTitleBanner = showTitleBanner;
+    public void setShowTitleBanner(boolean show) {
+        this.showTitleBanner = show;
         repaint();
     }
 
     public boolean isShowTitleBanner() {
         return showTitleBanner;
     }
-
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);

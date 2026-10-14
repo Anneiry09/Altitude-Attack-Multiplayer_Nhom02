@@ -49,6 +49,15 @@ public class ClientHandler extends Thread {
                     server.joinMatchmaking(this);
                 } else if ("MATCHMAKING_CANCEL".equals(message)) {
                     server.cancelMatchmaking(this);
+                } else if (message.startsWith("RENAME:")) {
+                    String newName = message.substring("RENAME:".length()).trim();
+                    if (!newName.isEmpty()) {
+                        this.playerName = newName;
+                        if (currentRoom != null) {
+                            currentRoom.broadcastRoomData();
+                        }
+                        server.broadcastLobbyData();
+                    }
                 } else if (message.startsWith("CREATE_ROOM")) {
                     String roomName = "";
                     if (message.contains(":")) {
@@ -90,6 +99,16 @@ public class ClientHandler extends Thread {
                         boolean acc = "ACCEPT".equalsIgnoreCase(parts[1]);
                         server.handleInviteResponse(this, rId, acc);
                     } catch (Exception ignored) {}
+                } else if (message.startsWith("ROOM_CHAT:")) {
+                    String chatText = message.substring("ROOM_CHAT:".length());
+                    if (currentRoom != null && !chatText.trim().isEmpty()) {
+                        currentRoom.broadcast("ROOM_CHAT:" + this.playerId + "," + this.playerName + "," + chatText);
+                    }
+                } else if (message.startsWith("ROOM_TYPING:")) {
+                    String isTyping = message.substring("ROOM_TYPING:".length());
+                    if (currentRoom != null) {
+                        currentRoom.broadcast("ROOM_TYPING:" + this.playerId + "," + this.playerName + "," + isTyping);
+                    }
                 }
             }
         } catch (IOException e) {

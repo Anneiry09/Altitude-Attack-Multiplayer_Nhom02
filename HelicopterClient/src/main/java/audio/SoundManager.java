@@ -35,6 +35,17 @@ public class SoundManager {
         return f1;
     }
 
+    public String getCurrentBgmFileName() {
+        return currentBgmFileName;
+    }
+
+    public synchronized void switchBGM(String fileName) {
+        if (fileName == null || fileName.equals(this.currentBgmFileName)) return;
+        this.currentBgmFileName = fileName;
+        stopBGM();
+        playBGM(fileName);
+    }
+
     // ==========================================
     // 1. NHẠC NỀN BGM (SourceDataLine Streaming)
     // ==========================================
