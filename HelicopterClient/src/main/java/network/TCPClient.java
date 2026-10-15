@@ -15,7 +15,7 @@ public class TCPClient {
     private DataInputStream in;
     private DataOutputStream out;
     private byte myPlayerId;
-    private boolean isConnected;
+    private volatile boolean isConnected;
 
     private TCPListener listener;
 
@@ -145,7 +145,7 @@ public class TCPClient {
                     listener.onDisconnected("Mất kết nối tới Server.");
                 }
             }
-        });
+        }, "TCP-Client-Listener");
         listenThread.setDaemon(true);
         listenThread.start();
     }

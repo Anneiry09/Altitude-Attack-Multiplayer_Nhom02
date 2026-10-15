@@ -10,7 +10,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public class UDPServer {
     private static final int UDP_PORT = 9999;
     private DatagramSocket socket;
-    private boolean isRunning;
+    private volatile boolean isRunning;
 
     // Lưu địa chỉ IP & Port của từng Client (được cập nhật khi Client gửi gói tin đầu tiên)
     private ConcurrentHashMap<Byte, InetSocketAddress> clientAddresses = new ConcurrentHashMap<>();
@@ -33,7 +33,7 @@ public class UDPServer {
             isRunning = true;
             System.out.println("[UDP Server] Listening on port " + UDP_PORT + "...");
 
-            new Thread(() -> {
+            Thread udpThread = new Thread(() -> {
                 byte[] buffer = new byte[1024];
                 while (isRunning) {
                     try {
@@ -59,7 +59,9 @@ public class UDPServer {
                         e.printStackTrace();
                     }
                 }
-            }).start();
+            }, "UDP-Server-Receiver");
+            udpThread.setDaemon(true);
+            udpThread.start();
         } catch (Exception e) {
             e.printStackTrace();
         }

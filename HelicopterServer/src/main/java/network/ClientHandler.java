@@ -15,9 +15,9 @@ public class ClientHandler extends Thread {
     private TCPServer server;
     private DataInputStream in;
     private DataOutputStream out;
-    private boolean isConnected;
+    private volatile boolean isConnected;
     private boolean isReady;
-    private PlayerStatus status = PlayerStatus.LOBBY;
+    private volatile PlayerStatus status = PlayerStatus.LOBBY;
     private Room currentRoom = null;
 
     public ClientHandler(Socket socket, byte playerId, TCPServer server) {

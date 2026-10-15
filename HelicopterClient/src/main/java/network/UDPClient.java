@@ -9,7 +9,7 @@ public class UDPClient {
     private static final int SERVER_PORT = 9999;
     private DatagramSocket socket;
     private InetAddress serverAddress;
-    private boolean isRunning;
+    private volatile boolean isRunning;
     
     // Trạng thái mới nhất nhận từ Server để GamePanel lấy ra vẽ
     public volatile StatePacket latestState = null;
@@ -30,7 +30,7 @@ public class UDPClient {
     }
 
     private void startListening() {
-        new Thread(() -> {
+        Thread listenThread = new Thread(() -> {
             byte[] buffer = new byte[1024];
             while (isRunning) {
                 try {
@@ -50,7 +50,9 @@ public class UDPClient {
                     if (isRunning) e.printStackTrace();
                 }
             }
-        }).start();
+        }, "UDP-Client-Receiver");
+        listenThread.setDaemon(true);
+        listenThread.start();
     }
 
     public void resetState() {

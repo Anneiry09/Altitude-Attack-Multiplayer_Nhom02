@@ -12,7 +12,7 @@ public class Room {
     private int id;
     private String name;
     private byte hostId;
-    private Status status = Status.WAITING;
+    private volatile Status status = Status.WAITING;
     private CopyOnWriteArrayList<ClientHandler> members = new CopyOnWriteArrayList<>();
     private UDPServer udpServer;
     private TCPServer tcpServer;

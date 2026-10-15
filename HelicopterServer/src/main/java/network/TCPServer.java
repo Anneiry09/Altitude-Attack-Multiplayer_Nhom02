@@ -18,7 +18,7 @@ public class TCPServer {
     private CopyOnWriteArrayList<ClientHandler> matchmakingQueue = new CopyOnWriteArrayList<>();
     private RoomManager roomManager = new RoomManager();
     private UDPServer udpServer;
-    private boolean isRunning;
+    private volatile boolean isRunning;
     private byte nextPlayerId = 0;
 
     public TCPServer(UDPServer udpServer) {
@@ -56,6 +56,7 @@ public class TCPServer {
 
                 byte playerId = nextPlayerId++;
                 ClientHandler handler = new ClientHandler(socket, playerId, this);
+                handler.setName("TCP-ClientHandler-" + playerId);
                 clients.add(handler);
                 handler.start();
                 System.out.println("[TCP Server] Player #" + playerId + " connected. Total online: " + clients.size());
@@ -264,5 +265,14 @@ public class TCPServer {
 
     public UDPServer getUdpServer() {
         return udpServer;
+    }
+
+    public void stop() {
+        isRunning = false;
+        try {
+            if (serverSocket != null && !serverSocket.isClosed()) {
+                serverSocket.close();
+            }
+        } catch (IOException ignored) {}
     }
 }

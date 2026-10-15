@@ -33,8 +33,8 @@ public class GameEngine implements Runnable {
     public static final int MATCH_DURATION_TICKS = 60 * 20; // Trận đấu 60 giây (1200 ticks)
     public static final float BULLET_MAX_RANGE = 300.0f;     // Tầm bắn tối đa của đạn (300px)
 
-    private boolean isRunning;
-    private boolean isGameOver = false;
+    private volatile boolean isRunning;
+    private volatile boolean isGameOver = false;
     private int tick;
 
     private ConcurrentHashMap<Byte, Player> players;
