@@ -104,14 +104,6 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         SoundManager.getInstance().playBGM("Darkwave.wav");
     }
 
-    private File findAssetFile(String relativePath) {
-        File f1 = new File(relativePath);
-        if (f1.exists()) return f1;
-        File f2 = new File("HelicopterClient/" + relativePath);
-        if (f2.exists()) return f2;
-        return f1;
-    }
-
     private void loadShipAssets() {
         String[] shipFiles = {
             "playerShip1_green.png",
@@ -121,7 +113,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         };
         for (int i = 0; i < 4; i++) {
             try {
-                File f = findAssetFile("assets/images/" + shipFiles[i]);
+                File f = AssetUtils.findAsset("assets/images/" + shipFiles[i]);
                 if (f.exists()) {
                     shipImages[i] = ImageIO.read(f);
                 }

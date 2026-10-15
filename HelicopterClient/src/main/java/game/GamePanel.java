@@ -7,6 +7,7 @@ import network.UDPClient;
 
 import javax.imageio.ImageIO;
 import audio.SoundManager;
+import gui.AssetUtils;
 import javax.swing.JPanel;
 import java.awt.*;
 import java.awt.event.KeyAdapter;
@@ -54,7 +55,7 @@ public class GamePanel extends JPanel {
     private boolean keyW, keyA, keyS, keyD;
     private boolean isShooting;
     private float mouseX, mouseY;
-    private boolean isRunning = true;
+    private volatile boolean isRunning = true;
 
     private long lastTime;
     private byte lastHp = 100;
@@ -134,21 +135,25 @@ public class GamePanel extends JPanel {
         setupInputListeners();
 
         // 1. Thread gửi Input 60Hz
-        new Thread(() -> {
+        Thread inputThread = new Thread(() -> {
             while (isRunning) {
                 sendInput();
-                try { Thread.sleep(16); } catch (Exception e) {}
+                try { Thread.sleep(16); } catch (Exception ignored) {}
             }
-        }).start();
+        }, "Game-Input-Thread");
+        inputThread.setDaemon(true);
+        inputThread.start();
 
-        // 2. Thread Render mở khóa FPS
-        new Thread(() -> {
+        // 2. Thread Render ổn định 60 FPS
+        Thread renderThread = new Thread(() -> {
             lastTime = System.nanoTime();
             while (isRunning) {
                 repaint();
-                try { Thread.sleep(2); } catch (Exception e) {}
+                try { Thread.sleep(16); } catch (Exception ignored) {}
             }
-        }).start();
+        }, "Game-Render-Thread");
+        renderThread.setDaemon(true);
+        renderThread.start();
     }
 
     public void setCountdown(int seconds) {
@@ -222,11 +227,7 @@ public class GamePanel extends JPanel {
     }
 
     private File findAssetFile(String relativePath) {
-        File f1 = new File(relativePath);
-        if (f1.exists()) return f1;
-        File f2 = new File("HelicopterClient/" + relativePath);
-        if (f2.exists()) return f2;
-        return f1;
+        return AssetUtils.findAsset(relativePath);
     }
 
     private void loadAssets() {

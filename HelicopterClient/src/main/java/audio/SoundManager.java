@@ -1,6 +1,7 @@
 package audio;
 
 import javax.sound.sampled.*;
+import gui.AssetUtils;
 import java.io.File;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -36,11 +37,7 @@ public class SoundManager {
     }
 
     private File findSoundFile(String fileName) {
-        File f1 = new File("assets/sounds/" + fileName);
-        if (f1.exists()) return f1;
-        File f2 = new File("HelicopterClient/assets/sounds/" + fileName);
-        if (f2.exists()) return f2;
-        return f1;
+        return AssetUtils.findSound(fileName);
     }
 
     public String getCurrentBgmFileName() {
