@@ -34,8 +34,26 @@ public class ClientHandler extends Thread {
             in = new DataInputStream(socket.getInputStream());
             out = new DataOutputStream(socket.getOutputStream());
 
-            playerName = in.readUTF();
-            System.out.println("[TCP Server] Player #" + playerId + " connected with name: " + playerName);
+            String candidateName = in.readUTF();
+            if (candidateName == null || candidateName.trim().isEmpty()) {
+                candidateName = "PhiCong#" + playerId;
+            }
+            candidateName = candidateName.trim();
+
+            if (server.isNameTaken(candidateName, this.playerId)) {
+                System.out.println("[TCP Server] Rejected connection for Player #" + playerId + " - Name taken: '" + candidateName + "'");
+                out.writeByte(-1);
+                out.writeUTF("Tên phi công '" + candidateName + "' đã có người sử dụng trong sảnh. Vui lòng chọn tên khác!");
+                out.flush();
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException ignored) {}
+                return;
+            }
+
+            this.playerName = candidateName;
+            server.addClient(this);
+            System.out.println("[TCP Server] Player #" + playerId + " connected with name: " + playerName + ". Online: " + server.getOnlineCount());
 
             out.writeByte(playerId);
             out.flush();
@@ -51,8 +69,13 @@ public class ClientHandler extends Thread {
                     server.cancelMatchmaking(this);
                 } else if (message.startsWith("RENAME:")) {
                     String newName = message.substring("RENAME:".length()).trim();
-                    if (!newName.isEmpty()) {
+                    if (newName.isEmpty()) {
+                        sendMessage("ERROR:Tên phi công không được để trống!");
+                    } else if (server.isNameTaken(newName, this.playerId)) {
+                        sendMessage("ERROR:Tên phi công '" + newName + "' đã có người sử dụng trong sảnh. Vui lòng chọn tên khác!");
+                    } else {
                         this.playerName = newName;
+                        sendMessage("NOTICE:Đã đổi tên thành công sang '" + newName + "'!");
                         if (currentRoom != null) {
                             currentRoom.broadcastRoomData();
                         }
@@ -147,7 +170,6 @@ public class ClientHandler extends Thread {
             currentRoom.removeMember(this);
         }
         server.removeClient(this);
-        server.broadcastLobbyData();
     }
 
     public byte getPlayerId() { return playerId; }

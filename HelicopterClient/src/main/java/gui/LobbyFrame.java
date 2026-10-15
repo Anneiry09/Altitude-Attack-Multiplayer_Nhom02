@@ -241,10 +241,15 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
                     rootCardLayout.show(rootPanel, "DASHBOARD");
                     showLobbyView();
                 } else {
-                    lblConnectStatus.setText("[x] Không thể kết nối tới " + ip);
+                    String err = tcpClient.getLastErrorMessage();
+                    if (err == null || err.isEmpty()) {
+                        err = "Không thể kết nối tới " + ip;
+                    }
+                    lblConnectStatus.setText("[x] " + err);
                     lblConnectStatus.setForeground(new Color(255, 80, 80));
                     btnConnect.setEnabled(true);
                     SoundManager.getInstance().playCancel();
+                    JOptionPane.showMessageDialog(this, err, "Lỗi kết nối", JOptionPane.WARNING_MESSAGE);
                 }
             });
         }).start();
@@ -360,11 +365,9 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
             myPlayerName,
             myPlayerId,
             newName -> {
-                this.myPlayerName = newName;
                 if (tcpClient != null) {
                     tcpClient.sendRename(newName);
                 }
-                lblPlayerProfile.setText("● PHI CÔNG: " + newName + " (ID: #" + myPlayerId + ")");
             },
             this::onDisconnectClicked
         );
@@ -967,6 +970,10 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
             onlinePlayersModel.setRowCount(0);
             for (OnlinePlayer p : players) {
                 playerNamesMap.put(p.id, p.name);
+                if (p.id == myPlayerId) {
+                    this.myPlayerName = p.name;
+                    lblPlayerProfile.setText("● PHI CÔNG: " + p.name + " (#" + myPlayerId + ")");
+                }
                 onlinePlayersModel.addRow(new Object[]{
                     p.id,
                     p.name + (p.id == myPlayerId ? " (BẠN)" : ""),

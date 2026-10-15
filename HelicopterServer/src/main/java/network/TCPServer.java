@@ -48,7 +48,10 @@ public class TCPServer {
 
                 if (clients.size() >= MAX_PLAYERS) {
                     DataOutputStream out = new DataOutputStream(socket.getOutputStream());
-                    out.writeUTF("FULL");
+                    out.writeByte(-1);
+                    out.writeUTF("Máy chủ đã đầy (" + MAX_PLAYERS + "/" + MAX_PLAYERS + "). Vui lòng thử lại sau!");
+                    out.flush();
+                    try { Thread.sleep(100); } catch (InterruptedException ignored) {}
                     socket.close();
                     System.out.println("[TCP Server] Connection rejected - Server full.");
                     continue;
@@ -57,9 +60,7 @@ public class TCPServer {
                 byte playerId = nextPlayerId++;
                 ClientHandler handler = new ClientHandler(socket, playerId, this);
                 handler.setName("TCP-ClientHandler-" + playerId);
-                clients.add(handler);
                 handler.start();
-                System.out.println("[TCP Server] Player #" + playerId + " connected. Total online: " + clients.size());
             }
         } catch (IOException e) {
             System.out.println("[TCP Server] Server stopped.");
@@ -223,6 +224,28 @@ public class TCPServer {
         return null;
     }
 
+    /**
+     * Kiểm tra xem tên người chơi đã có người khác trên server sử dụng chưa (không phân biệt hoa thường).
+     * @param name Tên cần kiểm tra
+     * @param excludePlayerId ID của người chơi cần loại trừ (dùng khi đổi tên, hoặc -1 nếu người mới kết nối)
+     * @return true nếu tên đã được dùng bởi người khác, false nếu hợp lệ
+     */
+    public synchronized boolean isNameTaken(String name, byte excludePlayerId) {
+        if (name == null || name.trim().isEmpty()) {
+            return true;
+        }
+        String clean = name.trim();
+        for (ClientHandler client : clients) {
+            if (client.getPlayerId() != excludePlayerId) {
+                String existing = client.getPlayerName();
+                if (existing != null && clean.equalsIgnoreCase(existing.trim())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     // Broadcast dữ liệu sảnh (Online players + Active rooms)
     public void broadcastLobbyData() {
         // Format: LOBBY_DATA:id,name,status;...|roomId,name,hostName,cur,max,status;...
@@ -252,11 +275,21 @@ public class TCPServer {
         }
     }
 
+    public void addClient(ClientHandler client) {
+        clients.add(client);
+    }
+
+    public int getOnlineCount() {
+        return clients.size();
+    }
+
     public void removeClient(ClientHandler client) {
-        clients.remove(client);
+        boolean removed = clients.remove(client);
         matchmakingQueue.remove(client);
-        System.out.println("[TCP Server] Player #" + client.getPlayerId() + " removed. Online: " + clients.size());
-        broadcastLobbyData();
+        if (removed) {
+            System.out.println("[TCP Server] Player #" + client.getPlayerId() + " (" + client.getPlayerName() + ") removed. Online: " + clients.size());
+            broadcastLobbyData();
+        }
     }
 
     public RoomManager getRoomManager() {

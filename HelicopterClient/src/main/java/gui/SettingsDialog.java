@@ -81,12 +81,11 @@ public class SettingsDialog {
             String newName = JOptionPane.showInputDialog(dialog, "Nhập tên phi công mới của bạn:", nameHolder[0]);
             if (newName != null && !newName.trim().isEmpty() && !newName.trim().equals(nameHolder[0])) {
                 String trimmed = newName.trim();
-                nameHolder[0] = trimmed;
-                btnProfileMenu.setText("👤 ĐỔI TÊN PHI CÔNG (" + trimmed + ")");
                 SoundManager.getInstance().playClick();
                 if (onRename != null) {
                     onRename.accept(trimmed);
                 }
+                dialog.dispose();
             }
         });
 

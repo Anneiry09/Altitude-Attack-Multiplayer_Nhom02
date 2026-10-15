@@ -16,6 +16,7 @@ public class TCPClient {
     private DataOutputStream out;
     private byte myPlayerId;
     private volatile boolean isConnected;
+    private String lastErrorMessage = "";
 
     private TCPListener listener;
 
@@ -51,7 +52,12 @@ public class TCPClient {
         this.listener = listener;
     }
 
+    public String getLastErrorMessage() {
+        return lastErrorMessage;
+    }
+
     public boolean connect(String serverIP, String playerName) {
+        lastErrorMessage = "";
         try {
             socket = new Socket(serverIP, 8888);
             in = new DataInputStream(socket.getInputStream());
@@ -60,7 +66,19 @@ public class TCPClient {
             out.writeUTF(playerName);
             out.flush();
 
-            myPlayerId = in.readByte();
+            byte responseId = in.readByte();
+            if (responseId < 0) {
+                try {
+                    lastErrorMessage = in.readUTF();
+                } catch (IOException ignored) {
+                    lastErrorMessage = "Kết nối bị từ chối bởi máy chủ.";
+                }
+                System.out.println("[TCP Client] Connection rejected: " + lastErrorMessage);
+                disconnect();
+                return false;
+            }
+
+            myPlayerId = responseId;
             isConnected = true;
             System.out.println("[TCP Client] Connected! Your ID: " + myPlayerId);
 
@@ -71,6 +89,7 @@ public class TCPClient {
             startListening();
             return true;
         } catch (IOException e) {
+            lastErrorMessage = "Không thể kết nối tới máy chủ (" + serverIP + ":8888). Vui lòng kiểm tra lại địa chỉ IP hoặc máy chủ chưa bật.";
             System.out.println("[TCP Client] Cannot connect to " + serverIP);
             return false;
         }
@@ -107,7 +126,7 @@ public class TCPClient {
                         } else if (message.startsWith("INVITE_SENT:") || message.startsWith("NOTICE:")) {
                             String msg = message.substring(message.indexOf(":") + 1);
                             if (listener != null) listener.onNotification(msg);
-                        } else if (message.startsWith("INVITE_FAILED:") || message.startsWith("JOIN_ROOM_FAILED:")) {
+                        } else if (message.startsWith("INVITE_FAILED:") || message.startsWith("JOIN_ROOM_FAILED:") || message.startsWith("ERROR:")) {
                             String err = message.substring(message.indexOf(":") + 1);
                             if (listener != null) listener.onError(err);
                         } else if (message.startsWith("COUNTDOWN:")) {
