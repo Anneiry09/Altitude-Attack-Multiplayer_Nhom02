@@ -93,9 +93,6 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
     // Hình ảnh phi thuyền cho 4 slot
     private BufferedImage[] shipImages = new BufferedImage[4];
 
-    private JPanel lobbyPanel;
-    private GamePanel gamePanel;
-
     public LobbyFrame() {
         tcpClient = new TCPClient();
         tcpClient.setListener(this);

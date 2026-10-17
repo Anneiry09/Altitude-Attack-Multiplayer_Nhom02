@@ -37,12 +37,6 @@ public class GameEngine implements Runnable {
     private volatile boolean isGameOver = false;
     private int tick;
 
-    // Cấu hình thời gian ván đấu: 60 giây ở tickrate 20Hz (1200 ticks)
-    public static final int MATCH_DURATION_SECONDS = 60;
-    public static final int TICKS_PER_SECOND = 20;
-    public static final int TOTAL_MATCH_TICKS = MATCH_DURATION_SECONDS * TICKS_PER_SECOND;
-    private int matchTick = 0;
-
     private ConcurrentHashMap<Byte, Player> players;
     private CopyOnWriteArrayList<Bullet> bullets;
     private UDPServer udpServer;
@@ -78,37 +72,19 @@ public class GameEngine implements Runnable {
         inputQueue.offer(input);
     }
 
-    public void setTCPServer(network.TCPServer tcpServer) {
-        this.tcpServer = tcpServer;
-    }
-
     public void addPlayer(byte id) {
         float startX = 150 + (id % 2) * 500;
         float startY = 150 + (id / 2) * 300;
         players.put(id, new Player(id, startX, startY));
     }
 
-    public void removePlayer(byte id) {
-        players.remove(id);
-    }
-
-    public void reset() {
-        players.clear();
-        bullets.clear();
-        matchTick = 0;
-        tick = 0;
-        isRunning = false;
-    }
-
     @Override
     public void run() {
         isRunning = true;
-        matchTick = 0;
-        System.out.println("[GameEngine] Game loop started (20Hz) - Match Duration: " + MATCH_DURATION_SECONDS + "s.");
+        System.out.println("[GameEngine] Game loop started (20Hz).");
 
         while (isRunning) {
             tick++;
-            matchTick++;
 
             if (tick >= MATCH_DURATION_TICKS) {
                 if (!isGameOver) {
@@ -146,16 +122,6 @@ public class GameEngine implements Runnable {
 
             broadcastState();
 
-            // Kiểm tra kết thúc ván đấu sau 60 giây
-            if (matchTick >= TOTAL_MATCH_TICKS) {
-                System.out.println("[GameEngine] 60s Match ended! Calculating results...");
-                isRunning = false;
-                if (tcpServer != null) {
-                    tcpServer.onMatchFinished(players);
-                }
-                break;
-            }
-
             try {
                 Thread.sleep(50); // 20 tick/s = 50ms
             } catch (InterruptedException e) {
@@ -163,23 +129,6 @@ public class GameEngine implements Runnable {
             }
         }
         System.out.println("[GameEngine] Game loop stopped.");
-    }
-
-    // Giám sát Heartbeat: ngắt kết nối người chơi nếu quá 5 giây không gửi gói tin UDP
-    private void checkHeartbeats() {
-        if (matchTick % TICKS_PER_SECOND != 0) return; // Kiểm tra mỗi giây 1 lần
-        long now = System.currentTimeMillis();
-        for (Byte pid : players.keySet()) {
-            Long lastTime = udpServer.getLastPacketTimes().get(pid);
-            if (lastTime != null && (now - lastTime > 5000)) {
-                System.out.println("[GameEngine] Player #" + pid + " timed out (>5s heartbeat loss).");
-                players.remove(pid);
-                udpServer.removeClient(pid);
-                if (tcpServer != null) {
-                    tcpServer.handlePlayerTimeout(pid);
-                }
-            }
-        }
     }
 
     private void processInputs() {

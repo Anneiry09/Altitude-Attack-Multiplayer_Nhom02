@@ -14,8 +14,6 @@ public class UDPServer {
 
     // Lưu địa chỉ IP & Port của từng Client (được cập nhật khi Client gửi gói tin đầu tiên)
     private ConcurrentHashMap<Byte, InetSocketAddress> clientAddresses = new ConcurrentHashMap<>();
-    // Lưu timestamp gói tin cuối cùng nhận từ Client để giám sát Heartbeat / Timeout (5s)
-    private ConcurrentHashMap<Byte, Long> lastPacketTimes = new ConcurrentHashMap<>();
     
     // Hàng đợi chứa các gói Input chờ GameEngine xử lý (nếu không dùng router)
     private ConcurrentLinkedQueue<InputPacket> inputQueue = new ConcurrentLinkedQueue<>();
@@ -47,10 +45,9 @@ public class UDPServer {
                         System.arraycopy(packet.getData(), 0, data, 0, packet.getLength());
                         InputPacket input = InputPacket.fromBytes(data);
 
-                        // Lưu/Cập nhật địa chỉ UDP và thời điểm nhận gói của Client này
+                        // Lưu/Cập nhật địa chỉ UDP của Client này
                         InetSocketAddress senderAddress = new InetSocketAddress(packet.getAddress(), packet.getPort());
                         clientAddresses.put(input.playerId, senderAddress);
-                        lastPacketTimes.put(input.playerId, System.currentTimeMillis());
 
                         // Định tuyến gói input tới phòng tương ứng nếu có router
                         if (inputRouter != null) {
@@ -101,21 +98,6 @@ public class UDPServer {
 
     public ConcurrentLinkedQueue<InputPacket> getInputQueue() {
         return inputQueue;
-    }
-
-    public ConcurrentHashMap<Byte, Long> getLastPacketTimes() {
-        return lastPacketTimes;
-    }
-
-    public void removeClient(byte playerId) {
-        clientAddresses.remove(playerId);
-        lastPacketTimes.remove(playerId);
-    }
-
-    public void clearAll() {
-        clientAddresses.clear();
-        lastPacketTimes.clear();
-        inputQueue.clear();
     }
 
     public void stop() {

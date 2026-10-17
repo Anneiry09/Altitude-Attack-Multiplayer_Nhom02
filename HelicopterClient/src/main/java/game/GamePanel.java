@@ -230,14 +230,6 @@ public class GamePanel extends JPanel {
         return AssetUtils.findAsset(relativePath);
     }
 
-    private File getAssetFile(String relativePath) {
-        File f = new File(relativePath);
-        if (f.exists()) return f;
-        f = new File("HelicopterClient", relativePath);
-        if (f.exists()) return f;
-        return null;
-    }
-
     private void loadAssets() {
         try {
             File bgFile = findAssetFile("assets/images/black.png");
@@ -1346,61 +1338,6 @@ public class GamePanel extends JPanel {
             FontMetrics fmLobby = g2d.getFontMetrics();
             g2d.drawString(lobbyText, btnLobbyX + (btnLobbyW - fmLobby.stringWidth(lobbyText)) / 2, btnY + 26);
         }
-
-        // 5. Vẽ HUD: Đồng hồ đếm ngược trận đấu 60 giây ở đỉnh giữa màn hình
-        int timeLeft = state.remainingTime;
-        int mins = timeLeft / 60;
-        int secs = timeLeft % 60;
-        String timeStr = String.format("%02d:%02d", mins, secs);
-
-        int timerBoxW = 120;
-        int timerBoxH = 34;
-        int timerBoxX = getWidth() / 2 - timerBoxW / 2;
-        int timerBoxY = 15;
-
-        g2d.setColor(new Color(20, 25, 35, 210));
-        g2d.fillRoundRect(timerBoxX, timerBoxY, timerBoxW, timerBoxH, 16, 16);
-        g2d.setColor(timeLeft <= 10 ? new Color(255, 60, 60) : new Color(0, 180, 255));
-        g2d.setStroke(new BasicStroke(2.0f));
-        g2d.drawRoundRect(timerBoxX, timerBoxY, timerBoxW, timerBoxH, 16, 16);
-
-        g2d.setFont(new Font("Arial", Font.BOLD, 18));
-        FontMetrics fm = g2d.getFontMetrics();
-        int textW = fm.stringWidth("⏱ " + timeStr);
-        int textH = fm.getAscent();
-        g2d.setColor(timeLeft <= 10 ? new Color(255, 80, 80) : Color.WHITE);
-        g2d.drawString("⏱ " + timeStr, timerBoxX + (timerBoxW - textW) / 2, timerBoxY + (timerBoxH + textH) / 2 - 4);
-
-        // 6. Mini Leaderboard thời gian thực ở góc trên bên phải
-        int boardW = 170;
-        int boardH = 28 + (state.playerCount * 20);
-        int boardX = getWidth() - boardW - 15;
-        int boardY = 15;
-
-        g2d.setColor(new Color(20, 25, 35, 190));
-        g2d.fillRoundRect(boardX, boardY, boardW, boardH, 12, 12);
-        g2d.setColor(new Color(255, 215, 0, 180));
-        g2d.setStroke(new BasicStroke(1.2f));
-        g2d.drawRoundRect(boardX, boardY, boardW, boardH, 12, 12);
-
-        g2d.setColor(new Color(255, 215, 0));
-        g2d.setFont(new Font("Arial", Font.BOLD, 12));
-        g2d.drawString("🏆 BẢNG ĐIỂM", boardX + 12, boardY + 18);
-
-        g2d.setFont(new Font("Arial", Font.PLAIN, 11));
-        for (int i = 0; i < state.playerCount; i++) {
-            byte pid = state.playerIds[i];
-            byte score = state.playerScores[i];
-            byte hp = state.playerHPs[i];
-            boolean isMe = (pid == myPlayerId);
-            g2d.setColor(isMe ? Color.CYAN : Color.WHITE);
-            String pStr = (isMe ? "➤ " : "  ") + "P" + pid + " : " + score + " pts" + (hp <= 0 ? " (Respawn)" : "");
-            g2d.drawString(pStr, boardX + 10, boardY + 38 + (i * 18));
-        }
-    }
-
-    public void stop() {
-        this.isRunning = false;
     }
 
     // 5.2. BẢNG ĐIỂM GÓC PHẢI THỜI GIAN THỰC (IN-GAME REAL-TIME SCOREBOARD)
