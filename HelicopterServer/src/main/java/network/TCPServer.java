@@ -1,5 +1,8 @@
 package network;
 
+import game.GameEngine;
+import game.Room;
+import game.RoomManager;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -8,19 +11,30 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 public class TCPServer {
     private static final int TCP_PORT = 8888;
-    private static final int MAX_PLAYERS = 4;
+    private static final int MAX_PLAYERS = 32; // Cho phép nhiều người chơi online đồng thời trên server
 
     private ServerSocket serverSocket;
     private CopyOnWriteArrayList<ClientHandler> clients = new CopyOnWriteArrayList<>();
-    private boolean isRunning;
+    private CopyOnWriteArrayList<ClientHandler> matchmakingQueue = new CopyOnWriteArrayList<>();
+    private RoomManager roomManager = new RoomManager();
+    private UDPServer udpServer;
+    private volatile boolean isRunning;
     private byte nextPlayerId = 0;
-    
-    private Thread countdownThread = null;
-    private game.GameEngine engine;
 
-    public TCPServer(game.GameEngine engine) {
-        this.engine = engine;
-        this.engine.setTCPServer(this);
+    public TCPServer(UDPServer udpServer) {
+        this.udpServer = udpServer;
+        // Thiết lập router input UDP trực tiếp tới engine của phòng tương ứng
+        if (this.udpServer != null) {
+            this.udpServer.setInputRouter(input -> {
+                Room room = roomManager.getRoomByPlayerId(input.playerId);
+                if (room != null) {
+                    GameEngine engine = room.getEngine();
+                    if (engine != null && engine.isRunning()) {
+                        engine.enqueueInput(input);
+                    }
+                }
+            });
+        }
     }
 
     public void start() {
@@ -34,139 +48,224 @@ public class TCPServer {
 
                 if (clients.size() >= MAX_PLAYERS) {
                     DataOutputStream out = new DataOutputStream(socket.getOutputStream());
-                    out.writeUTF("FULL");
+                    out.writeByte(-1);
+                    out.writeUTF("Máy chủ đã đầy (" + MAX_PLAYERS + "/" + MAX_PLAYERS + "). Vui lòng thử lại sau!");
+                    out.flush();
+                    try { Thread.sleep(100); } catch (InterruptedException ignored) {}
                     socket.close();
-                    System.out.println("[TCP Server] Connection rejected - Room is full.");
+                    System.out.println("[TCP Server] Connection rejected - Server full.");
                     continue;
                 }
 
                 byte playerId = nextPlayerId++;
                 ClientHandler handler = new ClientHandler(socket, playerId, this);
-                clients.add(handler);
+                handler.setName("TCP-ClientHandler-" + playerId);
                 handler.start();
-                System.out.println("[TCP Server] Player #" + playerId + " connected. Total: " + clients.size());
             }
         } catch (IOException e) {
             System.out.println("[TCP Server] Server stopped.");
         }
     }
 
-    // Kiểm tra nếu tất cả đã sẵn sàng (>= 2 người) thì đếm ngược 5s
-    public synchronized void checkAllReady() {
-        if (clients.size() < 2) return; // Phải có ít nhất 2 người mới chơi được
-        
-        boolean allReady = true;
-        for (ClientHandler client : clients) {
-            if (!client.isReady()) {
-                allReady = false;
-                break;
-            }
+    // Ghép trận ngẫu nhiên (Matchmaking)
+    public synchronized void joinMatchmaking(ClientHandler client) {
+        if (client.getCurrentRoom() != null) {
+            client.getCurrentRoom().removeMember(client);
+        }
+        if (!matchmakingQueue.contains(client)) {
+            matchmakingQueue.add(client);
+            client.setStatus(ClientHandler.PlayerStatus.MATCHMAKING);
+            client.sendMessage("MATCHMAKING_STATUS:QUEUED");
+            System.out.println("[Matchmaking] Player #" + client.getPlayerId() + " (" + client.getPlayerName() + ") entered matchmaking queue. Queue size: " + matchmakingQueue.size());
+            broadcastLobbyData();
         }
 
-        if (allReady && countdownThread == null) {
-            countdownThread = new Thread(() -> {
-                try {
-                    for (int i = 5; i > 0; i--) {
-                        broadcastMessage("COUNTDOWN:" + i);
-                        System.out.println("[TCP Server] Game starting in " + i + "...");
-                        Thread.sleep(1000);
-                    }
-                    
-                    // Reset GameEngine trước khi nạp người chơi vào ván mới
-                    engine.reset();
-                    for(ClientHandler c : clients) {
-                        engine.addPlayer(c.getPlayerId());
-                    }
-                    
-                    broadcastMessage("START_GAME");
-                    System.out.println("[TCP Server] START_GAME sent to all clients.");
-                    
-                    // Bắt đầu vòng lặp game
-                    new Thread(engine).start();
-                } catch (InterruptedException e) {
-                    broadcastMessage("CANCEL_COUNTDOWN");
-                    System.out.println("[TCP Server] Countdown cancelled.");
-                } finally {
-                    countdownThread = null;
+        // Nếu có đủ ít nhất 2 người đang tìm trận, tự động ghép vào 1 phòng và đếm ngược 5s
+        if (matchmakingQueue.size() >= 2) {
+            ClientHandler c1 = matchmakingQueue.remove(0);
+            ClientHandler c2 = matchmakingQueue.remove(0);
+
+            Room room = roomManager.createRoom("Trận ngẫu nhiên #" + (System.currentTimeMillis() % 1000), c1, udpServer, this);
+            room.addMember(c2);
+
+            c1.sendMessage("MATCHMAKING_STATUS:MATCHED");
+            c2.sendMessage("MATCHMAKING_STATUS:MATCHED");
+
+            // Tự động bật Sẵn sàng cho cả 2 để bắt đầu đếm ngược 5s
+            c1.setReady(true);
+            c2.setReady(true);
+            room.checkAllReady();
+
+            System.out.println("[Matchmaking] Paired Player #" + c1.getPlayerId() + " & Player #" + c2.getPlayerId() + " into Room #" + room.getId());
+            broadcastLobbyData();
+        }
+    }
+
+    public synchronized void cancelMatchmaking(ClientHandler client) {
+        if (matchmakingQueue.remove(client)) {
+            client.setStatus(ClientHandler.PlayerStatus.LOBBY);
+            client.sendMessage("MATCHMAKING_STATUS:IDLE");
+            System.out.println("[Matchmaking] Player #" + client.getPlayerId() + " cancelled matchmaking.");
+            broadcastLobbyData();
+        }
+    }
+
+    // Quản lý phòng (Room)
+    public synchronized void createRoom(ClientHandler client, String roomName) {
+        if (client.getCurrentRoom() != null) {
+            client.getCurrentRoom().removeMember(client);
+        }
+        if (matchmakingQueue.contains(client)) {
+            cancelMatchmaking(client);
+        }
+
+        if (roomName == null || roomName.trim().isEmpty()) {
+            roomName = "Phòng của " + client.getPlayerName();
+        }
+
+        Room room = roomManager.createRoom(roomName, client, udpServer, this);
+        System.out.println("[Room] Player #" + client.getPlayerId() + " created Room #" + room.getId() + " (" + room.getName() + ")");
+        broadcastLobbyData();
+    }
+
+    public synchronized void joinRoom(ClientHandler client, int roomId) {
+        Room room = roomManager.getRoom(roomId);
+        if (room == null) {
+            client.sendMessage("JOIN_ROOM_FAILED:Phòng không tồn tại.");
+            return;
+        }
+        if (room.getStatus() == Room.Status.PLAYING) {
+            client.sendMessage("JOIN_ROOM_FAILED:Trận đấu trong phòng này đã bắt đầu.");
+            return;
+        }
+        if (room.getMembers().size() >= Room.MAX_PLAYERS) {
+            client.sendMessage("JOIN_ROOM_FAILED:Phòng đã đầy người (4/4).");
+            return;
+        }
+
+        if (client.getCurrentRoom() != null) {
+            if (client.getCurrentRoom().getId() == roomId) {
+                // Đã ở trong phòng này rồi, gửi lại dữ liệu phòng để client chắc chắn hiển thị đúng
+                client.setStatus(ClientHandler.PlayerStatus.IN_ROOM);
+                room.broadcastRoomData();
+                return;
+            }
+            client.getCurrentRoom().removeMember(client);
+        }
+        if (matchmakingQueue.contains(client)) {
+            cancelMatchmaking(client);
+        }
+
+        boolean ok = room.addMember(client);
+        if (ok) {
+            System.out.println("[Room] Player #" + client.getPlayerId() + " joined Room #" + roomId);
+        } else {
+            client.sendMessage("JOIN_ROOM_FAILED:Không thể tham gia phòng.");
+        }
+    }
+
+    // Xử lý lời mời (Invite)
+    public void handleInvite(ClientHandler sender, byte targetPlayerId) {
+        Room room = sender.getCurrentRoom();
+        if (room == null) {
+            sender.sendMessage("INVITE_FAILED:Bạn chưa ở trong phòng nào để mời bạn bè.");
+            return;
+        }
+        if (room.getMembers().size() >= Room.MAX_PLAYERS) {
+            sender.sendMessage("INVITE_FAILED:Phòng của bạn đã đầy (4/4).");
+            return;
+        }
+
+        ClientHandler target = getClientById(targetPlayerId);
+        if (target == null) {
+            sender.sendMessage("INVITE_FAILED:Người chơi không tồn tại hoặc đã ngắt kết nối.");
+            return;
+        }
+
+        if (target.getStatus() != ClientHandler.PlayerStatus.LOBBY) {
+            sender.sendMessage("INVITE_FAILED:Người chơi hiện đang bận (" + target.getStatus().name() + ").");
+            return;
+        }
+
+        // Gửi lời mời tới target
+        target.sendMessage("INVITE_FROM:" + sender.getPlayerId() + "," + sender.getPlayerName() + "," + room.getId() + "," + room.getName());
+        sender.sendMessage("INVITE_SENT:Đã gửi lời mời tới " + target.getPlayerName() + ".");
+        System.out.println("[Invite] Player #" + sender.getPlayerId() + " invited Player #" + targetPlayerId + " to Room #" + room.getId());
+    }
+
+    public void handleInviteResponse(ClientHandler target, int roomId, boolean accept) {
+        Room room = roomManager.getRoom(roomId);
+        if (!accept) {
+            if (room != null) {
+                ClientHandler host = getClientById(room.getHostId());
+                if (host != null) {
+                    host.sendMessage("INVITE_DECLINED:" + target.getPlayerName() + " đã từ chối lời mời.");
                 }
-            });
-            countdownThread.start();
+            }
+            return;
         }
+
+        if (room == null || room.getMembers().size() >= Room.MAX_PLAYERS || room.getStatus() == Room.Status.PLAYING) {
+            target.sendMessage("JOIN_ROOM_FAILED:Phòng không còn khả dụng hoặc đã đầy.");
+            return;
+        }
+
+        if (matchmakingQueue.contains(target)) cancelMatchmaking(target);
+        if (target.getCurrentRoom() != null) target.getCurrentRoom().removeMember(target);
+
+        room.addMember(target);
+        System.out.println("[Invite] Player #" + target.getPlayerId() + " accepted invite and joined Room #" + roomId);
     }
 
-    // Kết thúc ván đấu sau 60s: tổng hợp điểm, tìm người thắng và broadcast GAME_OVER
-    public synchronized void onMatchFinished(java.util.concurrent.ConcurrentHashMap<Byte, game.Player> players) {
-        byte winnerId = -1;
-        String winnerName = "Không có";
-        int maxScore = -1;
-        boolean isDraw = false;
-
-        class PlayerRank {
-            byte id;
-            String name;
-            int score;
-            PlayerRank(byte id, String name, int score) {
-                this.id = id; this.name = name; this.score = score;
-            }
+    public ClientHandler getClientById(byte playerId) {
+        for (ClientHandler c : clients) {
+            if (c.getPlayerId() == playerId) return c;
         }
-        java.util.List<PlayerRank> ranks = new java.util.ArrayList<>();
-
-        for (ClientHandler client : clients) {
-            byte pid = client.getPlayerId();
-            game.Player p = players.get(pid);
-            int score = (p != null) ? p.score : 0;
-            ranks.add(new PlayerRank(pid, client.getPlayerName(), score));
-
-            if (score > maxScore) {
-                maxScore = score;
-                winnerId = pid;
-                winnerName = client.getPlayerName();
-                isDraw = false;
-            } else if (score == maxScore && maxScore >= 0) {
-                isDraw = true;
-            }
-        }
-
-        // Sắp xếp bảng xếp hạng điểm giảm dần
-        ranks.sort((a, b) -> Integer.compare(b.score, a.score));
-
-        if (isDraw && ranks.size() > 1 && ranks.get(0).score == ranks.get(1).score) {
-            winnerId = -2; // -2 đại diện cho kết quả Hòa
-            winnerName = "HÒA (TIE)";
-        }
-
-        StringBuilder sb = new StringBuilder("GAME_OVER:");
-        sb.append(winnerId).append(",").append(winnerName);
-        for (PlayerRank pr : ranks) {
-            sb.append(";").append(pr.id).append(",").append(pr.name).append(",").append(pr.score);
-        }
-
-        String finalResult = sb.toString();
-        System.out.println("[TCP Server] Broadcast Match Results: " + finalResult);
-        broadcastMessage(finalResult);
-
-        // Reset trạng thái sẵn sàng của tất cả Client
-        for (ClientHandler client : clients) {
-            client.setReady(false);
-        }
+        return null;
     }
 
-    // Xử lý khi Client bị ngắt kết nối do quá 5 giây timeout Heartbeat
-    public void handlePlayerTimeout(byte playerId) {
+    /**
+     * Kiểm tra xem tên người chơi đã có người khác trên server sử dụng chưa (không phân biệt hoa thường).
+     * @param name Tên cần kiểm tra
+     * @param excludePlayerId ID của người chơi cần loại trừ (dùng khi đổi tên, hoặc -1 nếu người mới kết nối)
+     * @return true nếu tên đã được dùng bởi người khác, false nếu hợp lệ
+     */
+    public synchronized boolean isNameTaken(String name, byte excludePlayerId) {
+        if (name == null || name.trim().isEmpty()) {
+            return true;
+        }
+        String clean = name.trim();
         for (ClientHandler client : clients) {
-            if (client.getPlayerId() == playerId) {
-                System.out.println("[TCP Server] Disconnecting timed out player #" + playerId);
-                client.sendMessage("TIMEOUT:Mất kết nối Heartbeat quá 5 giây.");
-                client.disconnect();
-                break;
+            if (client.getPlayerId() != excludePlayerId) {
+                String existing = client.getPlayerName();
+                if (existing != null && clean.equalsIgnoreCase(existing.trim())) {
+                    return true;
+                }
             }
         }
+        return false;
     }
 
-    // Nếu ai đó thoát giữa chừng, ngắt đếm ngược
-    public synchronized void cancelCountdown() {
-        if (countdownThread != null) {
-            countdownThread.interrupt();
+    // Broadcast dữ liệu sảnh (Online players + Active rooms)
+    public void broadcastLobbyData() {
+        // Format: LOBBY_DATA:id,name,status;...|roomId,name,hostName,cur,max,status;...
+        StringBuilder sbPlayers = new StringBuilder();
+        int pCount = 0;
+        for (ClientHandler c : clients) {
+            if (c.getPlayerName() == null) continue;
+            if (pCount > 0) sbPlayers.append(";");
+            String safeName = c.getPlayerName().replace(",", " ").replace(";", " ").replace("|", " ");
+            sbPlayers.append(c.getPlayerId()).append(",")
+                     .append(safeName).append(",")
+                     .append(c.getStatus().name());
+            pCount++;
+        }
+
+        String roomsStr = roomManager.serializeRooms();
+        String fullMsg = "LOBBY_DATA:" + sbPlayers.toString() + "|" + roomsStr;
+
+        for (ClientHandler c : clients) {
+            c.sendMessage(fullMsg);
         }
     }
 
@@ -176,18 +275,37 @@ public class TCPServer {
         }
     }
 
-    public void broadcastPlayerList() {
-        StringBuilder sb = new StringBuilder("PLAYER_LIST:");
-        for (ClientHandler client : clients) {
-            sb.append(client.getPlayerId()).append(",").append(client.getPlayerName()).append(";");
-        }
-        broadcastMessage(sb.toString());
+    public void addClient(ClientHandler client) {
+        clients.add(client);
+    }
+
+    public int getOnlineCount() {
+        return clients.size();
     }
 
     public void removeClient(ClientHandler client) {
-        clients.remove(client);
-        engine.removePlayer(client.getPlayerId());
-        System.out.println("[TCP Server] Player #" + client.getPlayerId() + " disconnected. Total: " + clients.size());
-        broadcastPlayerList();
+        boolean removed = clients.remove(client);
+        matchmakingQueue.remove(client);
+        if (removed) {
+            System.out.println("[TCP Server] Player #" + client.getPlayerId() + " (" + client.getPlayerName() + ") removed. Online: " + clients.size());
+            broadcastLobbyData();
+        }
+    }
+
+    public RoomManager getRoomManager() {
+        return roomManager;
+    }
+
+    public UDPServer getUdpServer() {
+        return udpServer;
+    }
+
+    public void stop() {
+        isRunning = false;
+        try {
+            if (serverSocket != null && !serverSocket.isClosed()) {
+                serverSocket.close();
+            }
+        } catch (IOException ignored) {}
     }
 }

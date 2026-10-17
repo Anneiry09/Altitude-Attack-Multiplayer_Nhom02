@@ -1,6 +1,5 @@
 package main;
 
-import game.GameEngine;
 import network.TCPServer;
 import network.UDPServer;
 
@@ -12,11 +11,8 @@ public class ServerMain {
         UDPServer udpServer = new UDPServer();
         udpServer.start();
 
-        // Khởi tạo Game Engine (truyền UDP vào để mượn đường gửi/nhận)
-        GameEngine engine = new GameEngine(udpServer);
-
-        // Khởi động TCP Server để đón người chơi vào sảnh
-        TCPServer tcpServer = new TCPServer(engine);
+        // Khởi động TCP Server để đón người chơi vào sảnh, quản lý phòng & ghép trận
+        TCPServer tcpServer = new TCPServer(udpServer);
         tcpServer.start();
     }
 }

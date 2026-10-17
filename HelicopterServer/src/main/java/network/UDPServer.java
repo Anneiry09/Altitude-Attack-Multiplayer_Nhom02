@@ -10,15 +10,24 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public class UDPServer {
     private static final int UDP_PORT = 9999;
     private DatagramSocket socket;
-    private boolean isRunning;
+    private volatile boolean isRunning;
 
     // Lưu địa chỉ IP & Port của từng Client (được cập nhật khi Client gửi gói tin đầu tiên)
     private ConcurrentHashMap<Byte, InetSocketAddress> clientAddresses = new ConcurrentHashMap<>();
     // Lưu timestamp gói tin cuối cùng nhận từ Client để giám sát Heartbeat / Timeout (5s)
     private ConcurrentHashMap<Byte, Long> lastPacketTimes = new ConcurrentHashMap<>();
     
-    // Hàng đợi chứa các gói Input chờ GameEngine xử lý
+    // Hàng đợi chứa các gói Input chờ GameEngine xử lý (nếu không dùng router)
     private ConcurrentLinkedQueue<InputPacket> inputQueue = new ConcurrentLinkedQueue<>();
+
+    public interface InputRouter {
+        void routeInput(InputPacket input);
+    }
+    private InputRouter inputRouter;
+
+    public void setInputRouter(InputRouter router) {
+        this.inputRouter = router;
+    }
 
     public void start() {
         try {
@@ -26,7 +35,7 @@ public class UDPServer {
             isRunning = true;
             System.out.println("[UDP Server] Listening on port " + UDP_PORT + "...");
 
-            new Thread(() -> {
+            Thread udpThread = new Thread(() -> {
                 byte[] buffer = new byte[1024];
                 while (isRunning) {
                     try {
@@ -43,15 +52,37 @@ public class UDPServer {
                         clientAddresses.put(input.playerId, senderAddress);
                         lastPacketTimes.put(input.playerId, System.currentTimeMillis());
 
-                        // Đưa vào hàng đợi
-                        inputQueue.offer(input);
+                        // Định tuyến gói input tới phòng tương ứng nếu có router
+                        if (inputRouter != null) {
+                            inputRouter.routeInput(input);
+                        } else {
+                            inputQueue.offer(input);
+                        }
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
                 }
-            }).start();
+            }, "UDP-Server-Receiver");
+            udpThread.setDaemon(true);
+            udpThread.start();
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    public void sendStateTo(byte[] stateData, java.util.Collection<Byte> playerIds) {
+        if (socket == null || socket.isClosed()) return;
+        
+        for (Byte pid : playerIds) {
+            InetSocketAddress address = clientAddresses.get(pid);
+            if (address != null) {
+                try {
+                    DatagramPacket packet = new DatagramPacket(stateData, stateData.length, address);
+                    socket.send(packet);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 

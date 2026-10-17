@@ -4,12 +4,12 @@
  */
 package network;
 
+import java.nio.ByteBuffer;
+
 /**
  *
  * @author an013
  */
-import java.nio.ByteBuffer;
-
 public class InputPacket {
     public int sequenceNumber; // Chống gửi nhầm gói cũ
     public byte playerId;      // ID của người chơi
