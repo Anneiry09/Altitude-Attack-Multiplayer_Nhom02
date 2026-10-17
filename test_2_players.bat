@@ -1,3 +1,5 @@
+@REM Kich ban kiem thu 2 nguoi choi thuc hien boi Phan Huu Tri - MSSV 2380602317
+@REM Do dac goi tin UDP cong 9999 va kiem thu mang Tailscale
 @echo off
 chcp 65001 >nul
 echo ========================================================
