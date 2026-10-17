@@ -2,11 +2,35 @@
 build/
 dist/
 target/
+bin/
 
-# Bỏ qua file cấu hình cá nhân của NetBeans
+# Bỏ qua file cấu hình cá nhân của NetBeans và IDE
 nbproject/private/
 nbproject/project.xml.template
 nbproject/project.properties.template
+.idea/
+.vscode/
+
+# Bỏ qua các file binary, nén lớn và gói build (nghiêm cấm theo Mục 4 & Mục 7)
+*.jar
+*.war
+*.zip
+*.tar.gz
+*.exe
+
+# Bỏ qua các file tài liệu báo cáo và file Word/PDF
+*.pdf
+*.docx
+*.doc
+
+# Bỏ qua các file tài liệu Markdown khác nhưng BẮT BUỘC giữ lại README.md (theo Mục 6)
+*.md
+!README.md
+
+# Bỏ qua sơ đồ tạm và ảnh test
+SoDo_Mermaid.txt
+test_render.png
+diagrams/
 
 # Bỏ qua các file cấu hình môi trường chứa mật khẩu/secret
 .env
