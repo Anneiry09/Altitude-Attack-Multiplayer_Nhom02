@@ -17,6 +17,7 @@ nbproject/project.properties.template
 *.zip
 *.tar.gz
 *.exe
+AltitudeAttack_Release/
 
 # Bỏ qua các file tài liệu báo cáo và file Word/PDF
 *.pdf
