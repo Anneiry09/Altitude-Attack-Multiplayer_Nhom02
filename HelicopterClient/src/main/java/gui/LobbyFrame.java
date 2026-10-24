@@ -346,6 +346,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
     }
 
     private void onDisconnectClicked() {
+        resetRoomChat();
         tcpClient.disconnect();
         if (dashboardView != null) dashboardView.stopAnimation();
         if (loginView != null) loginView.startAnimation();
@@ -772,6 +773,27 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         return panel;
     }
 
+    // ==========================================
+    // DỌN DẸP LỊCH SỬ CHAT KHI RỜI HOẶC ĐỔI PHÒNG
+    // ==========================================
+    private void resetRoomChat() {
+        if (txtChatMessages != null) {
+            txtChatMessages.setText("<html><body style='font-family: Dialog, Segoe UI, sans-serif; font-size: 11px; color: #9AB0D0; margin: 4px;'>"
+                + "<div style='color: #64FFDA;'>● Chào mừng vào phòng đấu! Hãy thảo luận chiến thuật cùng đồng đội.</div>"
+                + "</body></html>");
+            txtChatMessages.setCaretPosition(0);
+        }
+        if (txtChatInput != null) {
+            txtChatInput.setText("");
+        }
+        if (typingPlayers != null) {
+            typingPlayers.clear();
+        }
+        if (lblTypingStatus != null) {
+            lblTypingStatus.setText("");
+        }
+    }
+
     private void notifyTypingState() {
         if (!isCurrentlyTyping) {
             isCurrentlyTyping = true;
@@ -1012,6 +1034,9 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
     public void onRoomData(RoomInfo roomInfo, List<RoomMember> members) {
         SwingUtilities.invokeLater(() -> {
             try {
+                if (currentRoomId != roomInfo.id) {
+                    resetRoomChat();
+                }
                 currentRoomId = roomInfo.id;
                 lblRoomTitle.setText("◆ PHÒNG #" + roomInfo.id + ": " + roomInfo.name);
                 lblRoomHost.setText("★ Chỉ huy: " + roomInfo.hostName + " | Trạng thái: " + roomInfo.getStatusDisplay());
@@ -1106,6 +1131,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
             isMyReady = false;
             lblCountdownBanner.setText("");
             updateReadyButtonText();
+            resetRoomChat();
             if (gamePanel == null) {
                 showLobbyView();
             }
