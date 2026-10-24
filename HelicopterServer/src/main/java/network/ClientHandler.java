@@ -26,6 +26,10 @@ public class ClientHandler extends Thread {
         this.server = server;
         this.isConnected = true;
         this.isReady = false;
+        try {
+            this.socket.setKeepAlive(true);
+            this.socket.setTcpNoDelay(true);
+        } catch (Exception ignored) {}
     }
 
     @Override
@@ -39,6 +43,19 @@ public class ClientHandler extends Thread {
                 candidateName = "PhiCong#" + playerId;
             }
             candidateName = candidateName.trim();
+
+            // Cơ chế Level 1: Tự động giải phóng session cũ nếu cùng tên kết nối lại (do rớt mạng 4G/WiFi)
+            ClientHandler existingClient = server.getClientByName(candidateName);
+            if (existingClient != null && existingClient.getPlayerId() != this.playerId) {
+                System.out.println("[TCP Server] Detected existing session for '" + candidateName + "' (Player #" + existingClient.getPlayerId() + "). Disconnecting old session to allow clean reconnection.");
+                try {
+                    existingClient.sendMessage("DISCONNECTED:Tài khoản của bạn đã được kết nối lại từ một phiên mạng mới.");
+                } catch (Exception ignored) {}
+                existingClient.disconnect();
+                try {
+                    Thread.sleep(50);
+                } catch (InterruptedException ignored) {}
+            }
 
             if (server.isNameTaken(candidateName, this.playerId)) {
                 System.out.println("[TCP Server] Rejected connection for Player #" + playerId + " - Name taken: '" + candidateName + "'");

@@ -14,6 +14,13 @@ public final class AssetUtils {
         if (f1.exists()) return f1;
         File f2 = new File("HelicopterClient/" + relativePath);
         if (f2.exists()) return f2;
+        try {
+            File jarDir = new File(AssetUtils.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getParentFile();
+            if (jarDir != null && jarDir.isDirectory()) {
+                File f3 = new File(jarDir, relativePath);
+                if (f3.exists()) return f3;
+            }
+        } catch (Exception ignored) {}
         return f1;
     }
 

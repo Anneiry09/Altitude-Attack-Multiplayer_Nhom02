@@ -19,7 +19,20 @@ public class TCPServer {
     private RoomManager roomManager = new RoomManager();
     private UDPServer udpServer;
     private volatile boolean isRunning;
-    private byte nextPlayerId = 0;
+
+    private synchronized byte getNextPlayerId() {
+        for (byte id = 0; id < 100; id++) {
+            boolean inUse = false;
+            for (ClientHandler ch : clients) {
+                if (ch.getPlayerId() == id) {
+                    inUse = true;
+                    break;
+                }
+            }
+            if (!inUse) return id;
+        }
+        return 0;
+    }
 
     public TCPServer(UDPServer udpServer) {
         this.udpServer = udpServer;
@@ -57,7 +70,7 @@ public class TCPServer {
                     continue;
                 }
 
-                byte playerId = nextPlayerId++;
+                byte playerId = getNextPlayerId();
                 ClientHandler handler = new ClientHandler(socket, playerId, this);
                 handler.setName("TCP-ClientHandler-" + playerId);
                 handler.start();
@@ -220,6 +233,18 @@ public class TCPServer {
     public ClientHandler getClientById(byte playerId) {
         for (ClientHandler c : clients) {
             if (c.getPlayerId() == playerId) return c;
+        }
+        return null;
+    }
+
+    public ClientHandler getClientByName(String name) {
+        if (name == null || name.trim().isEmpty()) return null;
+        String clean = name.trim();
+        for (ClientHandler c : clients) {
+            String existing = c.getPlayerName();
+            if (existing != null && clean.equalsIgnoreCase(existing.trim())) {
+                return c;
+            }
         }
         return null;
     }

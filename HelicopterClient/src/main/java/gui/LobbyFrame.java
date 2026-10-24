@@ -31,7 +31,7 @@ import java.util.Map;
 public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
     // TCP & Mạng
     private TCPClient tcpClient;
-    private String currentServerIP = "localhost";
+    private String currentServerIP = "221.121.4.208";
     private String myPlayerName = "";
     private byte myPlayerId = -1;
     private Map<Byte, String> playerNamesMap = new HashMap<>();
@@ -171,7 +171,7 @@ public class LobbyFrame extends JFrame implements TCPClient.TCPListener {
         lblIP.setBounds(30, 60, 200, 20);
         formBox.add(lblIP);
 
-        txtServerIP = new GameTextField("localhost", "e.g. 127.0.0.1");
+        txtServerIP = new GameTextField("221.121.4.208", "e.g. 221.121.4.208");
         txtServerIP.setFocusColor(new Color(255, 120, 50));
         txtServerIP.setBounds(30, 82, 310, 38);
         formBox.add(txtServerIP);
